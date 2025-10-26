@@ -1,0 +1,1 @@
+ALTER TABLE products ALTER COLUMN thumbnail DROP DEFAULT;

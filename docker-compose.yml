@@ -1,0 +1,43 @@
+version : '3.8'
+
+services:
+  db:
+    image: postgres:17.6-alpine3.22
+    container_name: postgres-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nineshop-db
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: doanvuduy1234
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      app-networks:
+
+
+
+  redis:
+    image: redis:8.2-alpine
+    container_name: redis-database
+    restart: unless-stopped
+    environment:
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER: ${REDIS_USER}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+      - ./system/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      app-networks:
+volumes:
+  pgdata:
+  redis_data:
+
+networks:
+  app-networks:
+    driver: bridge
