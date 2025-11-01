@@ -24,7 +24,10 @@ type AuthService interface {
 
 type ProductService interface {
 	CreateProduct(ctx *gin.Context, arg dto.CreateProductParamDto) (sqlc.Product, error)
-	GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.Product, int64, error)
+	GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.GetAllProductByFilterRow, int64, error)
+	GetProductByCategoryId(ctx *gin.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error)
+	GetProductBySlug(ctx *gin.Context, slug string) (sqlc.GetProductBySlugRow, error)
+	GetImagesBySlug(c *gin.Context, slug string) ([]string, error)
 }
 
 type CategoryService interface {
@@ -38,4 +41,8 @@ type BrandService interface {
 
 type ProductImagesService interface {
 	SaveUploadFile(ctx *gin.Context, id int64) (*dto.UploadResult, error)
+}
+
+type CartService interface {
+	AddToCart(ctx *gin.Context, userUuid string, req dto.AddToCartParams) (sqlc.Cart, error)
 }

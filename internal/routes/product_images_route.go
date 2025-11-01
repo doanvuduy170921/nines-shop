@@ -20,6 +20,7 @@ func (pr *ProductImagesRoute) Register(r *gin.RouterGroup) {
 	{
 		productImg.POST("/uploads", pr.handler.UploadImage)
 		productImg.POST("/uploads/:product_id", pr.handler.MultipleUploadImages)
+
 	}
 	productImg.Static("/", "./uploads")
 }

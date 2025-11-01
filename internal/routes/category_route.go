@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"nineshop-be/internal/handler"
+	"nineshop-be/internal/middleware"
 )
 
 type CategoryRoute struct {
@@ -18,7 +19,7 @@ func NewCategoryRoute(handler *handler.CategoryHandler) *CategoryRoute {
 func (cr *CategoryRoute) Register(r *gin.RouterGroup) {
 	category := r.Group("/category")
 	{
-		category.POST("/create", cr.handler.CreateCategory)
+		category.POST("/create", middleware.RoleMiddleware("admin"), cr.handler.CreateCategory)
 		category.GET("/get-all", cr.handler.GetAllCategory)
 	}
 

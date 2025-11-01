@@ -17,11 +17,13 @@ var allowExts = map[string]bool{
 	".jpg":  true,
 	".jpeg": true,
 	".png":  true,
+	".webp": true,
 }
 
 var allowMimeTypes = map[string]bool{
 	"image/jpeg": true,
 	"image/png":  true,
+	"image/webp": true,
 }
 
 const maxSize = 5 << 20

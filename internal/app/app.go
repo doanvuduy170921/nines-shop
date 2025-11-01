@@ -38,6 +38,7 @@ func NewApplication(cfg *config.Config) *Application {
 		NewCategoryModule(),
 		NewBrandModule(),
 		NewProductImagesModule(),
+		NewCartModule(),
 	}
 
 	// init validator

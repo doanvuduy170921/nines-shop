@@ -9,6 +9,32 @@ import (
 	"context"
 )
 
+const getImagesByProductId = `-- name: GetImagesByProductId :many
+select p.image_url
+from product_images p
+where product_id = $1::int
+`
+
+func (q *Queries) GetImagesByProductId(ctx context.Context, id int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, getImagesByProductId, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var image_url string
+		if err := rows.Scan(&image_url); err != nil {
+			return nil, err
+		}
+		items = append(items, image_url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveAndUploadImg = `-- name: SaveAndUploadImg :one
 insert into product_images (product_id,image_url)
 values ($1,$2)

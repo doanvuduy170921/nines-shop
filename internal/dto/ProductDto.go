@@ -21,13 +21,13 @@ type CreateProductParamDto struct {
 func MapProductDtoToParams(input CreateProductParamDto) sqlc.CreateProductParams {
 	return sqlc.CreateProductParams{
 		Name:             input.Name,
-		BrandID:          intToInt32(input.BrandID),
-		CategoryID:       intToInt32(input.CategoryID),
+		BrandID:          IntToInt32(input.BrandID),
+		CategoryID:       IntToInt32(input.CategoryID),
 		Description:      &input.Description,
 		ShortDescription: &input.ShortDescription,
 		Price:            Float64ToPgTypeNumeric(input.Price),
 		DiscountPrice:    Float64ToPgTypeNumeric(input.DiscountPrice),
-		StockQuantity:    intToInt32(input.StockQuantity),
+		StockQuantity:    IntToInt32(input.StockQuantity),
 	}
 }
 
@@ -36,37 +36,83 @@ type ProductResponse struct {
 	Name             string  `json:"name"`
 	Slug             string  `json:"slug"`
 	Sku              string  `json:"sku"`
-	BrandID          int     `json:"brand_id"`
-	CategoryID       int     `json:"category_id"`
+	BrandName        string  `json:"brand_name"`
+	CategoryName     string  `json:"category_name"`
 	Description      string  `json:"description"`
 	ShortDescription string  `json:"short_description"`
 	Price            float64 `json:"price"`
 	DiscountPrice    float64 `json:"discount_price"`
 	StockQuantity    int32   `json:"stock_quantity"`
 	Status           string  `json:"status"`
+	Thumbnail        string  `json:"thumbnail"`
 }
 
-func MapSqlcProductToResponse(input sqlc.Product) ProductResponse {
+func MapSqlcProductToResponse(input sqlc.GetAllProductByFilterRow) ProductResponse {
 	return ProductResponse{
 		ID:               int(input.ID),
 		Name:             input.Name,
 		Slug:             input.Slug,
 		Sku:              input.Sku,
-		BrandID:          Int32ToInt(*input.BrandID),
-		CategoryID:       Int32ToInt(*input.CategoryID),
+		BrandName:        *input.BrandName,
+		CategoryName:     *input.CategoryName,
 		Description:      *input.Description,
 		ShortDescription: *input.ShortDescription,
 		Price:            pgTypeNumericToFloat64(input.Price),
 		DiscountPrice:    pgTypeNumericToFloat64(input.DiscountPrice),
 		StockQuantity:    *input.StockQuantity,
 		Status:           *input.Status,
+		Thumbnail:        input.Thumbnail,
 	}
 }
 
-func MapSqlcProductsToResponse(products []sqlc.Product) []ProductResponse {
+func MapSqlcProductsToResponse(products []sqlc.GetAllProductByFilterRow) []ProductResponse {
 	productResponses := make([]ProductResponse, len(products))
 	for i, product := range products {
 		productResponses[i] = MapSqlcProductToResponse(product) // Gán trực tiếp
+	}
+	return productResponses
+}
+
+func MapProductCateIdToRes(product sqlc.GetProductByCategoryIdRow) ProductResponse {
+	return ProductResponse{
+		ID:               int(product.ID),
+		Name:             product.Name,
+		Slug:             product.Slug,
+		Sku:              product.Sku,
+		BrandName:        *product.BrandName,
+		CategoryName:     *product.CategoryName,
+		Description:      *product.Description,
+		ShortDescription: *product.ShortDescription,
+		Price:            pgTypeNumericToFloat64(product.Price),
+		DiscountPrice:    pgTypeNumericToFloat64(product.DiscountPrice),
+		StockQuantity:    *product.StockQuantity,
+		Status:           *product.Status,
+		Thumbnail:        product.Thumbnail,
+	}
+}
+
+func MapProductSlugToRes(product sqlc.GetProductBySlugRow) ProductResponse {
+	return ProductResponse{
+		ID:               int(product.ID),
+		Name:             product.Name,
+		Slug:             product.Slug,
+		Sku:              product.Sku,
+		BrandName:        *product.BrandName,
+		CategoryName:     *product.CategoryName,
+		Description:      *product.Description,
+		ShortDescription: *product.ShortDescription,
+		Price:            pgTypeNumericToFloat64(product.Price),
+		DiscountPrice:    pgTypeNumericToFloat64(product.DiscountPrice),
+		StockQuantity:    *product.StockQuantity,
+		Status:           *product.Status,
+		Thumbnail:        product.Thumbnail,
+	}
+}
+
+func MapProductsCateIdToRes(products []sqlc.GetProductByCategoryIdRow) []ProductResponse {
+	productResponses := make([]ProductResponse, len(products))
+	for i, product := range products {
+		productResponses[i] = MapProductCateIdToRes(product)
 	}
 	return productResponses
 }
@@ -75,7 +121,7 @@ type CreateCategoryParamDto struct {
 	Name string `json:"name" binding:"required"`
 }
 
-func intToInt32(i int) *int32 {
+func IntToInt32(i int) *int32 {
 	v := int32(i)
 	return &v
 }

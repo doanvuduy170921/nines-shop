@@ -15,6 +15,15 @@ type Brand struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
+type Cart struct {
+	ID        int64            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	ProductID int32            `json:"product_id"`
+	Quantity  *int32           `json:"quantity"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
 type Category struct {
 	ID        int32            `json:"id"`
 	Name      string           `json:"name"`
@@ -37,6 +46,7 @@ type Product struct {
 	Status           *string          `json:"status"`
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
 	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+	Thumbnail        string           `json:"thumbnail"`
 }
 
 type ProductImage struct {

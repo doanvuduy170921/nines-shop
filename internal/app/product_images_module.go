@@ -13,8 +13,9 @@ type ProductImagesModule struct {
 }
 
 func NewProductImagesModule() *ProductImagesModule {
+	productRepo := repository.NewProductRepository(db.DB)
 	ProductImagesRepo := repository.NewProductImagesRepository(db.DB)
-	ProductImagesService := service.NewProductImagesService(ProductImagesRepo)
+	ProductImagesService := service.NewProductImagesService(ProductImagesRepo, productRepo)
 	ProductImagesHandler := handler.NewProductImagesHandler(ProductImagesService)
 	ProductImagesRoute := routes.NewProductImagesRoute(ProductImagesHandler)
 	return &ProductImagesModule{

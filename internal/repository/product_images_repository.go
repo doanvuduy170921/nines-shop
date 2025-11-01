@@ -20,3 +20,11 @@ func (pr *productImagesRepository) Save(ctx context.Context, arg sqlc.SaveAndUpl
 	}
 	return images, nil
 }
+
+func (pr *productImagesRepository) GetImagesByProductId(ctx context.Context, id int32) ([]string, error) {
+	images, err := pr.DB.GetImagesByProductId(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return images, nil
+}

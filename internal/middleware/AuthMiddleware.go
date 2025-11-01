@@ -46,7 +46,7 @@ func AuthMiddleware(tokenService auth.TokenService, cache cache.RedisCacheServic
 		c.Set("user_name", payload.Username)
 		c.Set("email", payload.Email)
 		c.Set("role", payload.Role)
-		c.Set("user_uuid", payload.UserUuid)
+		c.Set("user_uuid", payload.UserUuid.String())
 
 		c.Next()
 	}

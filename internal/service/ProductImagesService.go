@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"log"
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/dto"
 	"nineshop-be/internal/repository"
@@ -17,6 +18,7 @@ type productImagesService struct {
 
 type ProductUpdater interface {
 	GetProductById(ctx context.Context, id int32) (sqlc.Product, error)
+	UpdateThumbnail(ctx context.Context, thumbnail string, id int32) (sqlc.Product, error)
 }
 
 func NewProductImagesService(repo repository.ProductImagesRepository, pu ProductUpdater) ProductImagesService {
@@ -76,11 +78,13 @@ func (ps *productImagesService) SaveUploadFile(ctx *gin.Context, id int64) (*dto
 		result.SavedImages = append(result.SavedImages, savedImage)
 		result.SuccessCount++
 	}
-	//product, err := ps.pu.GetProductById(context, int32(id))
-	//if err != nil {
-	//	return nil, err
-	//}
 
+	thumbnailProduct := result.SavedImages[0].ImageUrl // lấy ảnh đầu tiên của product set cho thumbnail
+	_, err = ps.pu.UpdateThumbnail(ctx, thumbnailProduct, int32(id))
+	if err != nil {
+		log.Println("Error updating thumbnail: " + err.Error())
+		return result, err
+	}
 	if result.SuccessCount == 0 {
 		return result, errors.New("all uploads failed")
 	}

@@ -24,7 +24,7 @@ func (pr *productRepository) CreateProduct(ctx context.Context, arg sqlc.CreateP
 	return product, nil
 }
 
-func (pr *productRepository) GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.Product, error) {
+func (pr *productRepository) GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.GetAllProductByFilterRow, error) {
 	offset := (page - 1) * limit
 
 	fmt.Printf("Params: limit=%d, offset=%d, search=%s, status=%s, categoryId=%d, minPrice=%d, maxPrice=%d\n",
@@ -60,4 +60,31 @@ func (pr *productRepository) CountProduct(ctx context.Context, limit, page, cate
 
 func (pr *productRepository) GetProductById(ctx context.Context, id int32) (sqlc.Product, error) {
 	return pr.DB.GetProductById(ctx, id)
+}
+
+func (pr *productRepository) UpdateThumbnail(ctx context.Context, thumbnail string, id int32) (sqlc.Product, error) {
+	product, err := pr.DB.UpdateThumbnail(ctx, sqlc.UpdateThumbnailParams{
+		Thumbnail: thumbnail,
+		ID:        id,
+	})
+	if err != nil {
+		return sqlc.Product{}, err
+	}
+	return product, nil
+}
+
+func (pr *productRepository) GetProductByCategoryId(ctx context.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error) {
+	products, err := pr.DB.GetProductByCategoryId(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return products, nil
+}
+
+func (pr *productRepository) GetProductBySlug(ctx context.Context, slug string) (sqlc.GetProductBySlugRow, error) {
+	product, err := pr.DB.GetProductBySlug(ctx, slug)
+	if err != nil {
+		return sqlc.GetProductBySlugRow{}, err
+	}
+	return product, nil
 }

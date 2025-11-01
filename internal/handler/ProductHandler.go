@@ -83,3 +83,41 @@ func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
 	utils.ResponseSuccess(ctx, http.StatusOK, paginationRes, "Get All Product Success")
 
 }
+
+func (ph *ProductHandler) GetAllByCateId(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	products, err := ph.service.GetProductByCategoryId(ctx, int32(id))
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	productRes := dto.MapProductsCateIdToRes(products)
+	utils.ResponseSuccess(ctx, http.StatusOK, productRes, "Get All Product Success")
+}
+
+func (ph *ProductHandler) GetAllBySlug(ctx *gin.Context) {
+	slug := ctx.Param("slug")
+
+	product, err := ph.service.GetProductBySlug(ctx, slug)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	productRes := dto.MapProductSlugToRes(product)
+	utils.ResponseSuccess(ctx, http.StatusOK, productRes, "Get All Product Success")
+}
+
+func (ph *ProductHandler) GetImagesBySlug(ctx *gin.Context) {
+	slug := ctx.Param("slug")
+	images, err := ph.service.GetImagesBySlug(ctx, slug)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	utils.ResponseSuccess(ctx, http.StatusOK, images, "Get Images Success")
+}

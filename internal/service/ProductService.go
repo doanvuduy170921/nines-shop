@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -12,22 +13,29 @@ import (
 
 type productService struct {
 	repo repository.ProductRepository
+	iu   ImagesUpdater
 }
 
-func NewProductService(repo repository.ProductRepository) ProductService {
+type ImagesUpdater interface {
+	GetImagesByProductId(ctx context.Context, id int32) ([]string, error)
+}
+
+func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) ProductService {
 	return &productService{
-		repo: repo}
+		repo: repo,
+		iu:   iu,
+	}
 
 }
 
 func (ps *productService) CreateProduct(ctx *gin.Context, arg dto.CreateProductParamDto) (sqlc.Product, error) {
-	context := ctx.Request.Context()
+	c := ctx.Request.Context()
 
 	sku := utils.GenProductSku(arg.Name)
 	slug := utils.GenProductSlug(arg.Name)
 	productDto := dto.MapProductDtoToParams(arg)
 
-	product, err := ps.repo.CreateProduct(context, sqlc.CreateProductParams{
+	product, err := ps.repo.CreateProduct(c, sqlc.CreateProductParams{
 		Sku:              sku,
 		Slug:             slug,
 		Name:             productDto.Name,
@@ -50,16 +58,48 @@ func (ps *productService) CreateProduct(ctx *gin.Context, arg dto.CreateProductP
 	return product, err
 }
 
-func (ps *productService) GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.Product, int64, error) {
-	context := ctx.Request.Context()
-	products, err := ps.repo.GetAllProductByFilter(context, limit, page, categoryId, minPrice, maxPrice, search, status)
+func (ps *productService) GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.GetAllProductByFilterRow, int64, error) {
+	c := ctx.Request.Context()
+	products, err := ps.repo.GetAllProductByFilter(c, limit, page, categoryId, minPrice, maxPrice, search, status)
 	if err != nil {
 		return nil, 0, err
 	}
-	count, err := ps.repo.CountProduct(context, limit, page, categoryId, minPrice, maxPrice, search, status)
+	count, err := ps.repo.CountProduct(c, limit, page, categoryId, minPrice, maxPrice, search, status)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	return products, count, nil
+}
+
+func (ps *productService) GetProductByCategoryId(ctx *gin.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error) {
+	c := ctx.Request.Context()
+	products, err := ps.repo.GetProductByCategoryId(c, id)
+	if err != nil {
+		return nil, err
+	}
+	return products, nil
+}
+
+func (ps *productService) GetProductBySlug(ctx *gin.Context, slug string) (sqlc.GetProductBySlugRow, error) {
+	c := ctx.Request.Context()
+	product, err := ps.repo.GetProductBySlug(c, slug)
+	if err != nil {
+		return sqlc.GetProductBySlugRow{}, err
+	}
+	return product, nil
+}
+
+func (ps *productService) GetImagesBySlug(c *gin.Context, slug string) ([]string, error) {
+	ctx := c.Request.Context()
+	product, err := ps.repo.GetProductBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	images, err := ps.iu.GetImagesByProductId(ctx, int32(product.ID))
+	if err != nil {
+		return nil, err
+	}
+	return images, nil
+
 }

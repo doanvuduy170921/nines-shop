@@ -19,8 +19,12 @@ type UserRepository interface {
 
 type ProductRepository interface {
 	CreateProduct(ctx context.Context, arg sqlc.CreateProductParams) (sqlc.Product, error)
-	GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.Product, error)
+	GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.GetAllProductByFilterRow, error)
 	CountProduct(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) (int64, error)
+	GetProductById(ctx context.Context, id int32) (sqlc.Product, error)
+	UpdateThumbnail(ctx context.Context, thumbnail string, id int32) (sqlc.Product, error)
+	GetProductByCategoryId(ctx context.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error)
+	GetProductBySlug(ctx context.Context, slug string) (sqlc.GetProductBySlugRow, error)
 }
 
 type CategoryRepository interface {
@@ -34,4 +38,11 @@ type BrandRepository interface {
 
 type ProductImagesRepository interface {
 	Save(ctx context.Context, arg sqlc.SaveAndUploadImgParams) (sqlc.ProductImage, error)
+	GetImagesByProductId(ctx context.Context, id int32) ([]string, error)
+}
+
+type CartRepository interface {
+	AddToCart(ctx context.Context, arg sqlc.AddToCartParams) (sqlc.Cart, error)
+	ExistsProductId(ctx context.Context, arg sqlc.ExistsProductIdParams) (bool, error)
+	UpdateCart(ctx context.Context, arg sqlc.UpdateCartParams) (sqlc.Cart, error)
 }
