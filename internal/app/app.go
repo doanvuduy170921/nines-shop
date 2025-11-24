@@ -13,6 +13,7 @@ import (
 	"nineshop-be/internal/service"
 	"nineshop-be/internal/validation"
 	"nineshop-be/pkg/cache"
+	"nineshop-be/pkg/email"
 )
 
 type Module interface {
@@ -23,6 +24,7 @@ type Application struct {
 	config *config.Config
 	router *gin.Engine
 	redis  *redis.Client
+	email  email.EmailService
 }
 
 func NewApplication(cfg *config.Config) *Application {
@@ -30,15 +32,22 @@ func NewApplication(cfg *config.Config) *Application {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	redisClient := config.NewRedisConfig()
 	redisCacheService := cache.NewRedisCacheService(redisClient)
-	userService := service.NewUserService(repository.NewUserRepository(db.DB), redisClient)
+
+	emailConfig := config.NewEmailConfig()
+	emailService := email.NewGmailService(*emailConfig)
+	userService := service.NewUserService(repository.NewUserRepository(db.DB), redisClient, emailService)
+
 	module := []Module{
-		NewUserModule(redisClient),
+		NewUserModule(redisClient, emailService),
 		NewAuthModule(redisCacheService, userService),
 		NewProductModule(),
 		NewCategoryModule(),
 		NewBrandModule(),
 		NewProductImagesModule(),
 		NewCartModule(),
+		NewPendingOrderModule(),
+		NewPaymentModule(),
+		NewOrderItemModule(),
 	}
 
 	// init validator
@@ -51,6 +60,7 @@ func NewApplication(cfg *config.Config) *Application {
 		config: cfg,
 		router: r,
 		redis:  redisClient,
+		email:  emailService,
 	}
 }
 

@@ -45,4 +45,33 @@ type CartRepository interface {
 	AddToCart(ctx context.Context, arg sqlc.AddToCartParams) (sqlc.Cart, error)
 	ExistsProductId(ctx context.Context, arg sqlc.ExistsProductIdParams) (bool, error)
 	UpdateCart(ctx context.Context, arg sqlc.UpdateCartParams) (sqlc.Cart, error)
+	GetCartsByUserId(ctx context.Context, userID int32) ([]sqlc.GetCartsByUserIdRow, error)
+	DeleteItemInCart(ctx context.Context, arg sqlc.DeleteItemInCartParams) error
+	UpdateAllCart(ctx context.Context, arg sqlc.UpdateAllCartParams) (sqlc.Cart, error)
+}
+
+type PendingOrderItemRepository interface {
+	Create(ctx context.Context, arg sqlc.CreatePendingOrderItemParams) (sqlc.PendingOrderItem, error)
+	GetByPOrderItemId(ctx context.Context, id int32) ([]sqlc.PendingOrderItem, error)
+}
+
+type PendingOrderRepository interface {
+	Create(ctx context.Context, arg sqlc.CreatePendingOrderParams) (sqlc.PendingOrder, error)
+	GetPOrderById(ctx context.Context, id int32) (sqlc.PendingOrder, error)
+}
+
+type PaymentMethodRepository interface {
+	GetAllPayment(ctx context.Context) ([]sqlc.PaymentMethod, error)
+}
+
+type OrderRepository interface {
+	CreateOrder(ctx context.Context, arg sqlc.CreateOrderParams) (sqlc.Order, error)
+}
+
+type OrderItemRepository interface {
+	AddOrderItem(ctx context.Context, arg sqlc.AddOrderItemParams) (sqlc.OrderItem, error)
+	GetListOrderItemsByUserId(ctx context.Context, id int32) ([]sqlc.GetOrderItemByUserIdRow, error)
+}
+type OrderStatusHistoryRepository interface {
+	CreateOrderStatusHistory(ctx context.Context, arg sqlc.CreateOrderStatusHistoryParams) (sqlc.OrderStatusHistory, error)
 }

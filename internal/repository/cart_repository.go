@@ -30,3 +30,19 @@ func (cs *cartRepository) UpdateCart(ctx context.Context, arg sqlc.UpdateCartPar
 	}
 	return cart, nil
 }
+func (cs *cartRepository) GetCartsByUserId(ctx context.Context, userID int32) ([]sqlc.GetCartsByUserIdRow, error) {
+	carts, err := cs.DB.GetCartsByUserId(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return carts, nil
+}
+
+func (cs *cartRepository) DeleteItemInCart(ctx context.Context, arg sqlc.DeleteItemInCartParams) error {
+	return cs.DB.DeleteItemInCart(ctx, arg)
+}
+
+func (cs *cartRepository) UpdateAllCart(ctx context.Context, arg sqlc.UpdateAllCartParams) (sqlc.Cart, error) {
+	cart, err := cs.DB.UpdateAllCart(ctx, arg)
+	return cart, err
+}

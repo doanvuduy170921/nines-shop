@@ -20,6 +20,9 @@ func (cr *CartRoute) Register(r *gin.RouterGroup) {
 	cart := r.Group("/cart")
 	{
 		cart.POST("/add-to-cart", middleware.RoleMiddleware("customer"), cr.handler.AddToCart)
+		cart.GET("/get-all-in-cart", middleware.RoleMiddleware("customer"), cr.handler.GetCartsByUserId)
+		cart.DELETE("/delete", middleware.RoleMiddleware("customer"), cr.handler.DeleteItem)
+		cart.PUT("/update-all", middleware.RoleMiddleware("customer"), cr.handler.UpdateAllCart)
 	}
 
 }

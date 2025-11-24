@@ -45,4 +45,20 @@ type ProductImagesService interface {
 
 type CartService interface {
 	AddToCart(ctx *gin.Context, userUuid string, req dto.AddToCartParams) (sqlc.Cart, error)
+	GetCartsByUserId(ctx *gin.Context, userUuid string) ([]sqlc.GetCartsByUserIdRow, error)
+	DeleteItem(ctx *gin.Context, input dto.DeleteItemInCartParams) error
+	UpdateAllCart(ctx *gin.Context, input dto.UpdateAllCartParam) ([]sqlc.Cart, float64, float64, float64, float64, error)
+}
+
+type PendingOrderService interface {
+	Create(ctx *gin.Context, arg dto.CreatePendingOrderDto) (sqlc.PendingOrder, error)
+	ValidateOTP(ctx *gin.Context, arg dto.ValidateOTPParams) (sqlc.Order, error)
+}
+
+type PaymentService interface {
+	GetAllPayment(ctx *gin.Context) ([]sqlc.PaymentMethod, error)
+}
+
+type OrderItemService interface {
+	GetListOrderItemByUserId(ctx *gin.Context) ([]sqlc.GetOrderItemByUserIdRow, error)
 }

@@ -31,11 +31,11 @@ func (as *authService) Login(c *gin.Context, email, password string) (string, st
 	context := c.Request.Context()
 	user, err := as.repo.FindByEmail(context, email)
 	if err != nil {
-		return "", "", 0, "", utils.WrapError(err, "Username or password is invalid! (1)", utils.ErrorCodeUnauthorized)
+		return "", "", 0, "", utils.WrapError(err, "Username or password is invalid! ", utils.ErrorCodeUnauthorized)
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return "", "", 0, "", utils.WrapError(err, "Username or password is invalid! (2)", utils.ErrorCodeUnauthorized)
+		return "", "", 0, "", utils.WrapError(err, "Username or password is invalid! ", utils.ErrorCodeUnauthorized)
 	}
 	accessToken, err := as.tokenService.GenerateToken(user)
 	if err != nil {

@@ -12,18 +12,21 @@ import (
 	"nineshop-be/internal/repository"
 	"nineshop-be/internal/utils"
 	"nineshop-be/pkg/cache"
+	"nineshop-be/pkg/email"
 	"time"
 )
 
 type userService struct {
 	repo  repository.UserRepository
 	redis cache.RedisCacheService
+	mail  email.EmailService
 }
 
-func NewUserService(repo repository.UserRepository, redisClient *redis.Client) UserService {
+func NewUserService(repo repository.UserRepository, redisClient *redis.Client, mail email.EmailService) UserService {
 	return &userService{
 		repo:  repo,
 		redis: cache.NewRedisCacheService(redisClient),
+		mail:  mail,
 	}
 }
 
@@ -78,6 +81,10 @@ func (us *userService) GetAllUserV2(ctx *gin.Context, search, role string, isAct
 	if err != nil {
 		return nil, 0, utils.WrapError(err, "Fail to count user V2", utils.ErrorCodeInternalError)
 	}
+	if err := us.mail.SendOTPEmail("doanvuduydtu@gmail.com", utils.GenOTP()); err != nil {
+		log.Printf("Fail to send otp email : %s", err.Error())
+	}
+
 	return users, count, nil
 }
 

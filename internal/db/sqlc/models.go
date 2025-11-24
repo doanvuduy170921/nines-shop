@@ -31,6 +31,78 @@ type Category struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
+type Order struct {
+	ID              int32            `json:"id"`
+	UserID          int32            `json:"user_id"`
+	Name            string           `json:"name"`
+	Email           string           `json:"email"`
+	Phone           string           `json:"phone"`
+	Address         string           `json:"address"`
+	PaymentMethodID int32            `json:"payment_method_id"`
+	Subtotal        pgtype.Numeric   `json:"subtotal"`
+	ShippingPrice   pgtype.Numeric   `json:"shipping_price"`
+	Tax             pgtype.Numeric   `json:"tax"`
+	TotalAmount     pgtype.Numeric   `json:"total_amount"`
+	Status          string           `json:"status"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
+	PaymentStatus   string           `json:"payment_status"`
+	TransactionID   *string          `json:"transaction_id"`
+	DeliveredAt     pgtype.Timestamp `json:"delivered_at"`
+}
+
+type OrderItem struct {
+	ID               int32            `json:"id"`
+	OrderID          int32            `json:"order_id"`
+	ProductID        int32            `json:"product_id"`
+	Quantity         int32            `json:"quantity"`
+	Price            pgtype.Numeric   `json:"price"`
+	ProductName      string           `json:"product_name"`
+	ProductThumbnail *string          `json:"product_thumbnail"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+}
+
+type OrderStatusHistory struct {
+	ID        int32            `json:"id"`
+	OrderID   int32            `json:"order_id"`
+	Status    string           `json:"status"`
+	Note      *string          `json:"note"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+type PaymentMethod struct {
+	ID          int32   `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	IsActive    *bool   `json:"is_active"`
+}
+
+type PendingOrder struct {
+	ID              int32            `json:"id"`
+	UserID          int32            `json:"user_id"`
+	Name            string           `json:"name"`
+	Email           string           `json:"email"`
+	Phone           string           `json:"phone"`
+	PaymentMethodID int32            `json:"payment_method_id"`
+	Address         string           `json:"address"`
+	Otp             string           `json:"otp"`
+	OtpExpiresAt    pgtype.Timestamp `json:"otp_expires_at"`
+	Subtotal        pgtype.Numeric   `json:"subtotal"`
+	TotalAmount     pgtype.Numeric   `json:"total_amount"`
+	ShippingPrice   pgtype.Numeric   `json:"shipping_price"`
+	Tax             pgtype.Numeric   `json:"tax"`
+	Status          *string          `json:"status"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+}
+
+type PendingOrderItem struct {
+	ID             int32          `json:"id"`
+	PendingOrderID int32          `json:"pending_order_id"`
+	ProductID      int32          `json:"product_id"`
+	Quantity       int32          `json:"quantity"`
+	Price          pgtype.Numeric `json:"price"`
+}
+
 type Product struct {
 	ID               int64            `json:"id"`
 	Name             string           `json:"name"`

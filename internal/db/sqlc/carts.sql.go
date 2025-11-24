@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addToCart = `-- name: AddToCart :one
@@ -35,6 +37,22 @@ func (q *Queries) AddToCart(ctx context.Context, arg AddToCartParams) (Cart, err
 	return i, err
 }
 
+const deleteItemInCart = `-- name: DeleteItemInCart :exec
+DELETE FROM cart
+WHERE user_id = $1::int
+  AND product_id = $2::int
+`
+
+type DeleteItemInCartParams struct {
+	UserID    int32 `json:"user_id"`
+	ProductID int32 `json:"product_id"`
+}
+
+func (q *Queries) DeleteItemInCart(ctx context.Context, arg DeleteItemInCartParams) error {
+	_, err := q.db.Exec(ctx, deleteItemInCart, arg.UserID, arg.ProductID)
+	return err
+}
+
 const existsProductId = `-- name: ExistsProductId :one
 SELECT
     (EXISTS (
@@ -55,6 +73,82 @@ func (q *Queries) ExistsProductId(ctx context.Context, arg ExistsProductIdParams
 	var exists_ bool
 	err := row.Scan(&exists_)
 	return exists_, err
+}
+
+const getCartsByUserId = `-- name: GetCartsByUserId :many
+select p.name,
+       p.id,
+       p.thumbnail,
+       p.price,
+       p.stock_quantity,
+       c.quantity
+from cart c
+left join products p on p.id = c.product_id
+where user_id = $1::int
+`
+
+type GetCartsByUserIdRow struct {
+	Name          *string        `json:"name"`
+	ID            *int64         `json:"id"`
+	Thumbnail     *string        `json:"thumbnail"`
+	Price         pgtype.Numeric `json:"price"`
+	StockQuantity *int32         `json:"stock_quantity"`
+	Quantity      *int32         `json:"quantity"`
+}
+
+func (q *Queries) GetCartsByUserId(ctx context.Context, userID int32) ([]GetCartsByUserIdRow, error) {
+	rows, err := q.db.Query(ctx, getCartsByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetCartsByUserIdRow{}
+	for rows.Next() {
+		var i GetCartsByUserIdRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.ID,
+			&i.Thumbnail,
+			&i.Price,
+			&i.StockQuantity,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateAllCart = `-- name: UpdateAllCart :one
+update cart
+set quantity = $1::int
+where user_id = $2::int
+and product_id = $3::int
+returning id, user_id, product_id, quantity, created_at, updated_at
+`
+
+type UpdateAllCartParams struct {
+	Quantity  int32 `json:"quantity"`
+	UserID    int32 `json:"user_id"`
+	ProductID int32 `json:"product_id"`
+}
+
+func (q *Queries) UpdateAllCart(ctx context.Context, arg UpdateAllCartParams) (Cart, error) {
+	row := q.db.QueryRow(ctx, updateAllCart, arg.Quantity, arg.UserID, arg.ProductID)
+	var i Cart
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProductID,
+		&i.Quantity,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateCart = `-- name: UpdateCart :one

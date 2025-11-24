@@ -18,3 +18,28 @@ set quantity = quantity + @quantity::int
 where user_id = @user_id::int
 and product_id = @product_id::int
 returning *;
+
+
+-- name: GetCartsByUserId :many
+select p.name,
+       p.id,
+       p.thumbnail,
+       p.price,
+       p.stock_quantity,
+       c.quantity
+from cart c
+left join products p on p.id = c.product_id
+where user_id = @user_id::int;
+
+-- name: DeleteItemInCart :exec
+DELETE FROM cart
+WHERE user_id = @user_id::int
+  AND product_id = @product_id::int;
+
+
+-- name: UpdateAllCart :one
+update cart
+set quantity = @quantity::int
+where user_id = @user_id::int
+and product_id = @product_id::int
+returning *;

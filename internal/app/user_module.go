@@ -7,15 +7,16 @@ import (
 	"nineshop-be/internal/repository"
 	"nineshop-be/internal/routes"
 	"nineshop-be/internal/service"
+	"nineshop-be/pkg/email"
 )
 
 type UserModule struct {
 	route routes.Route
 }
 
-func NewUserModule(redis *redis.Client) *UserModule {
+func NewUserModule(redis *redis.Client, mail email.EmailService) *UserModule {
 	userRepo := repository.NewUserRepository(db.DB)
-	userService := service.NewUserService(userRepo, redis)
+	userService := service.NewUserService(userRepo, redis, mail)
 	userHandler := handler.NewUserHandler(userService)
 	userRoute := routes.NewUserRoute(userHandler)
 	return &UserModule{
