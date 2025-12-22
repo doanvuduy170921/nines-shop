@@ -29,22 +29,9 @@
 
 ## 📐 Sơ Đồ Kiến Trúc (Architecture Diagram)
 
-```mermaid
-graph TD
-    Client[Client] -- "HTTP Request" --> Gin[Gin Gonic Router]
-    Gin -- "Call" --> Handler[Handler Layer]
-    Handler -- "Call" --> Service[Service Layer]
-    
-    subgraph "Database & Cache"
-        Service -- "Query" --> Postgres[(PostgreSQL)]
-        Service -- "Set/Get" --> Redis[(Redis Cache)]
-    end
-    
-    subgraph "Async Processing"
-        Service -- "Push Job" --> Channel{Buffered Channel}
-        Channel -- "Consume" --> Worker[Mail Worker]
-        Worker -- "SMTP" --> Gmail[Gmail API]
-    end
+<img width="722" height="714" alt="image" src="https://github.com/user-attachments/assets/f57efd0b-4dce-43e1-a8b9-213badacfb36" />
+
+
 ⚙️ Hướng Dẫn Cài Đặt
 1. Clone dự án
 Bash
