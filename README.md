@@ -37,25 +37,39 @@
 Bash
 
 git clone [https://github.com/username/nineshop-be.git](https://github.com/username/nineshop-be.git)
+
 cd nineshop-be
+
 2. Cấu hình môi trường
+
 Tạo file .env tại thư mục gốc và cấu hình các thông số sau:
 
 Đoạn mã
 
 DB_HOST=localhost
+
 DB_PORT=5432
+
 DB_USER=root
+
 DB_PASSWORD=your_password
+
 DB_NAME=nineshop-be
+
 REDIS_ADDRESS=localhost:6379
+
 GMAIL_APP_PASSWORD=your_gmail_app_password
+
 SERVER_ADDRESS=:8080
+
 3. Chạy ứng dụng
+
 Bash
 
 go run cmd/main.go
+
 📝 Liên Hệ
+
 Họ tên: Đoàn Vũ Duy
 
 Email: doanvuduyndh@gmail.com
