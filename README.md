@@ -1,33 +1,51 @@
-# Nineshop-BE
+🛒 NineShop Backend
 
-> **Một hệ thống Backend E-commerce hiệu năng cao được xây dựng bằng Go, tập trung vào kiến trúc sạch (Clean Architecture) và xử lý đồng thời (Concurrency).**
+📌 Overview
 
----
+NineShop Backend là hệ thống backend cho website thương mại điện tử chuyên bán các sản phẩm công nghệ.
+Dự án được xây dựng nhằm mô phỏng một hệ thống e-commerce thực tế, cung cấp các RESTful APIs phục vụ cho frontend, xử lý nghiệp vụ người dùng, sản phẩm và đơn hàng.
 
-## 🚀 Điểm Nổi Bật Kỹ Thuật (Key Technical Features)
+Backend được phát triển với Golang, tập trung vào kiến trúc rõ ràng, dễ mở rộng và dễ bảo trì.
 
-* **Clean Architecture:** Tổ chức code theo các lớp tách biệt (Handler, Service, Repository, DTO) giúp dự án dễ dàng mở rộng, kiểm thử và bảo trì.
-* **High-Performance Concurrency:**
-    * Áp dụng mô hình **Producer-Consumer** với **Buffered Channels** để xử lý các tác vụ nặng như gửi Email/OTP chạy ngầm.
-    * Sử dụng **Worker Pool** để giới hạn số lượng Goroutine, kiểm soát tài nguyên hệ thống và tránh tình trạng tràn RAM khi có đột biến truy cập.
-* **Type-Safe Database:** Sử dụng **SQLC** để biên dịch SQL thuần thành code Go, đảm bảo hiệu suất tối đa và tránh các lỗi sai kiểu dữ liệu ngay từ khi biên dịch.
-* **Optimized Caching:** Tích hợp **Redis** để quản lý OTP (với TTL) và cache danh sách sản phẩm, giúp giảm tải từ 60-70% cho Database chính.
-* **Graceful Shutdown:** Hệ thống có cơ chế lắng nghe tín hiệu tắt từ OS để đóng các kết nối DB và hoàn thành các tác vụ Worker đang dang dở trước khi dừng hẳn.
+🚀 Features
 
----
+👤 User
 
-## 🛠 Tech Stack
+   Đăng ký tài khoản
 
-* **Language:** Go (Golang)
-* **Web Framework:** Gin Gonic
-* **Database:** PostgreSQL (Sử dụng `pgxpool` để quản lý kết nối hiệu quả)
-* **Caching:** Redis
-* **Tools:**
-    * `SQLC` (Type-safe SQL)
-    * `Bcrypt` (Hashing password)
-    * `Viper/Env` (Quản lý cấu hình)
+   Xác thực tài khoản bằng OTP qua email
 
----
+   Đăng nhập với JWT Authentication
+
+   Xem thông tin cá nhân
+
+Xem lịch sử đơn hàng
+
+🛒 Order
+
+Tạo đơn hàng
+
+Theo dõi trạng thái đơn hàng
+
+Xem chi tiết đơn hàng
+
+Xử lý nhiều người dùng đặt hàng đồng thời
+
+📦 Product & Category
+
+Lấy danh sách sản phẩm
+
+Tìm kiếm, lọc sản phẩm theo danh mục, thương hiệu và giá cả
+
+Quản lý danh mục sản phẩm
+
+🛠️ Admin
+
+Quản lý sản phẩm (CRUD)
+
+Quản lý đơn hàng & trạng thái
+
+Quản lý người dùng
 
 ## 📐 Sơ Đồ Kiến Trúc (Architecture Diagram)
 
