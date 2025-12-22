@@ -46,6 +46,20 @@ func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
 	minPriceStr := ctx.DefaultQuery("min_price", "0")
 	maxPriceStr := ctx.DefaultQuery("max_price", "999999999")
 	categoryIdStr := ctx.Query("category_id")
+	brandIdStr := ctx.Query("brand_id")
+
+	var brandId int32
+	if brandIdStr != "" {
+		braId, err := strconv.Atoi(brandIdStr)
+		if err != nil {
+			utils.ResponseError(ctx, err)
+			return
+		}
+		brandId = int32(braId)
+	} else {
+		// Nếu không truyền brandId, set về 0 để query lấy tất cả
+		brandId = 0
+	}
 
 	var categoryId int32
 	if categoryIdStr != "" {
@@ -65,7 +79,7 @@ func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
 	minPrice := validation.ConvertAndValidateIntParam(ctx, minPriceStr, 0)
 	maxPrice := validation.ConvertAndValidateIntParam(ctx, maxPriceStr, 999999999)
 
-	products, count, err := ph.service.GetAllByFilter(ctx, limit, page, categoryId, minPrice, maxPrice, searchStr, statusStr)
+	products, count, err := ph.service.GetAllByFilter(ctx, limit, page, categoryId, minPrice, maxPrice, brandId, searchStr, statusStr)
 	if err != nil {
 		utils.ResponseError(ctx, err)
 		return
@@ -120,4 +134,45 @@ func (ph *ProductHandler) GetImagesBySlug(ctx *gin.Context) {
 		return
 	}
 	utils.ResponseSuccess(ctx, http.StatusOK, images, "Get Images Success")
+}
+
+func (ph *ProductHandler) GetTop3Seller(ctx *gin.Context) {
+	var cateId int32 = 8
+	products, err := ph.service.GetTop8ProductSeller(ctx, &cateId)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	utils.ResponseSuccess(ctx, http.StatusOK, products, "Get Top 3 Product Success")
+
+}
+
+func (ph *ProductHandler) GetTop8Laptop(ctx *gin.Context) {
+	var cateId int32 = 1
+	products, err := ph.service.GetTop8ProductSeller(ctx, &cateId)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	utils.ResponseSuccess(ctx, http.StatusOK, products, "Get Top 8 Laptop Success")
+}
+
+func (ph *ProductHandler) GetTop8Mouse(ctx *gin.Context) {
+	var cateId int32 = 7
+	products, err := ph.service.GetTop8ProductSeller(ctx, &cateId)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	utils.ResponseSuccess(ctx, http.StatusOK, products, "Get Top 8 Laptop Success")
+}
+
+func (ph *ProductHandler) GetTop4Tablet(ctx *gin.Context) {
+	var cateId int32 = 6
+	products, err := ph.service.GetTop8ProductSeller(ctx, &cateId)
+	if err != nil {
+		utils.ResponseError(ctx, err)
+		return
+	}
+	utils.ResponseSuccess(ctx, http.StatusOK, products, "Get Top 4 Tablet Success")
 }

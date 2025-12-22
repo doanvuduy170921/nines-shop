@@ -32,7 +32,7 @@ func (ur *userRepository) GetAllUser(context context.Context) ([]sqlc.User, erro
 	return ur.DB.GetAllUser(context)
 }
 
-func (ur *userRepository) GetAllUserV2(ctx context.Context, search, role string, isActive *bool, page, limit int32) ([]sqlc.User, error) {
+func (ur *userRepository) GetAllUserV2(ctx context.Context, search, role string, isActive *bool, page, limit int32) ([]sqlc.GetAllUserV2Row, error) {
 	isActiveFilter := ""
 	var isActiveBool bool
 
@@ -45,10 +45,10 @@ func (ur *userRepository) GetAllUserV2(ctx context.Context, search, role string,
 	users, err := ur.DB.GetAllUserV2(ctx, sqlc.GetAllUserV2Params{
 		Limit:          limit,
 		Offset:         offset,
-		Search:         search,
-		Role:           role,
-		IsActiveFilter: isActiveFilter,
-		IsActive:       isActiveBool,
+		Search:         &search,
+		Role:           &role,
+		IsActiveFilter: &isActiveFilter,
+		IsActive:       &isActiveBool,
 	})
 	if err != nil {
 		return nil, err
@@ -66,10 +66,10 @@ func (ur *userRepository) CountUser(ctx context.Context, search, role string, is
 	}
 
 	count, err := ur.DB.CountUser(ctx, sqlc.CountUserParams{
-		Search:         search,
-		Role:           role,
-		IsActiveFilter: isActiveFilter,
-		IsActive:       isActiveBool,
+		Search:         &search,
+		Role:           &role,
+		IsActiveFilter: &isActiveFilter,
+		IsActive:       &isActiveBool,
 	})
 	if err != nil {
 		log.Printf("error : %v", err)
@@ -101,4 +101,8 @@ func (ur *userRepository) GetByUuid(ctx context.Context, uuid pgtype.UUID) (sqlc
 		return sqlc.User{}, err
 	}
 	return user, nil
+}
+
+func (ur *userRepository) ActiveUser(ctx context.Context, userUuid pgtype.UUID) error {
+	return ur.DB.ActiveUser(ctx, userUuid)
 }

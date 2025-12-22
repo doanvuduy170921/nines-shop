@@ -12,16 +12,17 @@ import (
 )
 
 const createPendingOrder = `-- name: CreatePendingOrder :one
-INSERT INTO pending_orders(user_id,name,email,phone,payment_method_id,address,otp,otp_expires_at,subtotal,total_amount,shipping_price,tax,status)
+INSERT INTO pending_orders(user_id,name,email,phone,payment_method_id,address,otp,otp_expires_at,subtotal,total_amount,shipping_price,tax,status,amount_item)
 VALUES ($1,$2,$3,$4,$5,$6,$7,
            $8,
            $9::NUMERIC(10,2),
            $10::NUMERIC(10,2),
            $11::NUMERIC(10,2),
            $12::NUMERIC(10,2),
-           $13
+           $13,
+            $14
        )
-    RETURNING id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at
+    RETURNING id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item
 `
 
 type CreatePendingOrderParams struct {
@@ -38,6 +39,7 @@ type CreatePendingOrderParams struct {
 	ShippingPrice   pgtype.Numeric   `json:"shipping_price"`
 	Tax             pgtype.Numeric   `json:"tax"`
 	Status          *string          `json:"status"`
+	AmountItem      *int32           `json:"amount_item"`
 }
 
 func (q *Queries) CreatePendingOrder(ctx context.Context, arg CreatePendingOrderParams) (PendingOrder, error) {
@@ -55,6 +57,7 @@ func (q *Queries) CreatePendingOrder(ctx context.Context, arg CreatePendingOrder
 		arg.ShippingPrice,
 		arg.Tax,
 		arg.Status,
+		arg.AmountItem,
 	)
 	var i PendingOrder
 	err := row.Scan(
@@ -73,12 +76,13 @@ func (q *Queries) CreatePendingOrder(ctx context.Context, arg CreatePendingOrder
 		&i.Tax,
 		&i.Status,
 		&i.CreatedAt,
+		&i.AmountItem,
 	)
 	return i, err
 }
 
 const getPOrderById = `-- name: GetPOrderById :one
-select id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at
+select id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item
 from pending_orders
 where id = $1::int
 `
@@ -102,6 +106,7 @@ func (q *Queries) GetPOrderById(ctx context.Context, id int32) (PendingOrder, er
 		&i.Tax,
 		&i.Status,
 		&i.CreatedAt,
+		&i.AmountItem,
 	)
 	return i, err
 }

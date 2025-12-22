@@ -143,12 +143,19 @@ and p.price <= coalesce($5::int,99999999)
 and(
     $6::text ='' OR p.status = $6::text
     )
-
 and(
-     $7::int = 0
-    or p.category_id = $7::int
+    $7::int =0
+    or p.brand_id = $7::int
     )
-order by p.updated_at desc
+and(
+     $8::int = 0
+    or p.category_id = $8::int
+    )
+order by
+    CASE WHEN $9::text = 'price_asc' THEN p.price END asc,
+    CASE WHEN $9::text = 'price_desc' THEN p.price END desc ,
+    CASE WHEN $9::text = 'newest' THEN p.updated_at END desc,
+    p.updated_at desc
 limit $1
 offset $2
 `
@@ -160,7 +167,9 @@ type GetAllProductByFilterParams struct {
 	MinPrice   int32  `json:"min_price"`
 	MaxPrice   int32  `json:"max_price"`
 	Status     string `json:"status"`
+	BrandID    int32  `json:"brand_id"`
 	CategoryID int32  `json:"category_id"`
+	SortBy     string `json:"sort_by"`
 }
 
 type GetAllProductByFilterRow struct {
@@ -187,7 +196,9 @@ func (q *Queries) GetAllProductByFilter(ctx context.Context, arg GetAllProductBy
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.Status,
+		arg.BrandID,
 		arg.CategoryID,
+		arg.SortBy,
 	)
 	if err != nil {
 		return nil, err
@@ -382,6 +393,55 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProduct
 		&i.CategoryName,
 	)
 	return i, err
+}
+
+const getTop8ProductSeller = `-- name: GetTop8ProductSeller :many
+select  p.id,
+        p.name,
+        p.price,
+        p.discount_price,
+        p.thumbnail,
+        p.slug
+from products p
+where category_id = $1
+order by discount_price desc
+    limit 8
+`
+
+type GetTop8ProductSellerRow struct {
+	ID            int64          `json:"id"`
+	Name          string         `json:"name"`
+	Price         pgtype.Numeric `json:"price"`
+	DiscountPrice pgtype.Numeric `json:"discount_price"`
+	Thumbnail     string         `json:"thumbnail"`
+	Slug          string         `json:"slug"`
+}
+
+func (q *Queries) GetTop8ProductSeller(ctx context.Context, cateID *int32) ([]GetTop8ProductSellerRow, error) {
+	rows, err := q.db.Query(ctx, getTop8ProductSeller, cateID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTop8ProductSellerRow{}
+	for rows.Next() {
+		var i GetTop8ProductSellerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Price,
+			&i.DiscountPrice,
+			&i.Thumbnail,
+			&i.Slug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateThumbnail = `-- name: UpdateThumbnail :one

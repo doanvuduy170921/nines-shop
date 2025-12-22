@@ -15,6 +15,7 @@ type PaymentModule struct {
 func NewPaymentModule() *PaymentModule {
 	PaymentRepo := repository.NewPaymentMethodRepository(db.DB)
 	PaymentService := service.NewPaymentService(PaymentRepo)
+	
 	PaymentHandler := handler.NewPaymentHandler(PaymentService)
 	PaymentRoute := routes.NewPaymentRoute(PaymentHandler)
 	return &PaymentModule{

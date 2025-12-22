@@ -11,29 +11,44 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activeUser = `-- name: ActiveUser :exec
+update users
+set is_active = true
+where user_uuid = $1
+`
+
+func (q *Queries) ActiveUser(ctx context.Context, userUuid pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, activeUser, userUuid)
+	return err
+}
+
 const countUser = `-- name: CountUser :one
-SELECT count(*)
-FROM users
+SELECT COUNT(*)
+FROM users u
 WHERE created_at IS NOT NULL
   AND (
-    $1::text = ''
-    OR name ILIKE '%' || $1 || '%'
-    OR email ILIKE '%' || $1 || '%'
+    $1::text IS NULL
+    OR $1::text = ''
+    OR u.name_search LIKE '%' || LOWER($1::text) || '%'
+    OR u.email_search LIKE '%' || LOWER($1::text) || '%'
     )
   AND (
-    $2::text = '' OR role = $2
+    $2::text IS NULL
+    OR $2::text = ''
+    OR u.role = $2::text
     )
   AND (
-    $3::text = ''
-    OR is_active = $4::bool
+    $3::text IS NULL
+    OR $3::text = ''
+    OR u.is_active = $4::bool
     )
 `
 
 type CountUserParams struct {
-	Search         string `json:"search"`
-	Role           string `json:"role"`
-	IsActiveFilter string `json:"is_active_filter"`
-	IsActive       bool   `json:"is_active"`
+	Search         *string `json:"search"`
+	Role           *string `json:"role"`
+	IsActiveFilter *string `json:"is_active_filter"`
+	IsActive       *bool   `json:"is_active"`
 }
 
 func (q *Queries) CountUser(ctx context.Context, arg CountUserParams) (int64, error) {
@@ -49,9 +64,9 @@ func (q *Queries) CountUser(ctx context.Context, arg CountUserParams) (int64, er
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (name,email,password,phone,address,role)
-values ($1,$2,$3,$4,$5,$6)
-returning id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid
+INSERT INTO users (name,email,password,phone,address,role,is_active)
+values ($1,$2,$3,$4,$5,$6,$7)
+returning id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid, name_search, email_search
 `
 
 type CreateUserParams struct {
@@ -61,6 +76,7 @@ type CreateUserParams struct {
 	Phone    *string `json:"phone"`
 	Address  *string `json:"address"`
 	Role     *string `json:"role"`
+	IsActive *bool   `json:"is_active"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -71,6 +87,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Phone,
 		arg.Address,
 		arg.Role,
+		arg.IsActive,
 	)
 	var i User
 	err := row.Scan(
@@ -85,12 +102,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserUuid,
+		&i.NameSearch,
+		&i.EmailSearch,
 	)
 	return i, err
 }
 
 const findByEmail = `-- name: FindByEmail :one
-select id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid from users
+select id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid, name_search, email_search from users
 where email = $1
 `
 
@@ -109,12 +128,14 @@ func (q *Queries) FindByEmail(ctx context.Context, email string) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserUuid,
+		&i.NameSearch,
+		&i.EmailSearch,
 	)
 	return i, err
 }
 
 const getAllUser = `-- name: GetAllUser :many
-SELECT id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid FROM users
+SELECT id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid, name_search, email_search FROM users
 `
 
 func (q *Queries) GetAllUser(ctx context.Context) ([]User, error) {
@@ -138,6 +159,8 @@ func (q *Queries) GetAllUser(ctx context.Context) ([]User, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserUuid,
+			&i.NameSearch,
+			&i.EmailSearch,
 		); err != nil {
 			return nil, err
 		}
@@ -150,36 +173,61 @@ func (q *Queries) GetAllUser(ctx context.Context) ([]User, error) {
 }
 
 const getAllUserV2 = `-- name: GetAllUserV2 :many
-SELECT id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid
-FROM users
+SELECT u.id,
+       u.name,
+       u.email,
+       u.address,
+       u.phone,
+       u.is_active,
+       u.role,
+       u.created_at,
+       u.updated_at,
+       u.user_uuid
+FROM users u
 WHERE created_at IS NOT NULL
   AND (
-    $3::text = ''
-    OR name ILIKE '%' || $3 || '%'
-    OR email ILIKE '%' || $3 || '%'
+    $3::text IS NULL
+    OR $3::text = ''
+    OR u.name_search LIKE '%' || LOWER($3::text) || '%'
+    OR u.email_search LIKE '%' || LOWER($3::text) || '%'
     )
   AND (
-    $4::text = '' OR role = $4
+    $4::text IS NULL
+    OR $4::text = ''
+    OR u.role = $4::text
     )
   AND (
-    $5::text = ''
-    OR is_active = $6::bool
+    $5::text IS NULL
+    OR $5::text = ''
+    OR u.is_active = $6::bool
     )
-order by updated_at desc 
-LIMIT $1
-OFFSET $2
+ORDER BY u.updated_at DESC, u.id DESC
+    LIMIT $1 OFFSET $2
 `
 
 type GetAllUserV2Params struct {
-	Limit          int32  `json:"limit"`
-	Offset         int32  `json:"offset"`
-	Search         string `json:"search"`
-	Role           string `json:"role"`
-	IsActiveFilter string `json:"is_active_filter"`
-	IsActive       bool   `json:"is_active"`
+	Limit          int32   `json:"limit"`
+	Offset         int32   `json:"offset"`
+	Search         *string `json:"search"`
+	Role           *string `json:"role"`
+	IsActiveFilter *string `json:"is_active_filter"`
+	IsActive       *bool   `json:"is_active"`
 }
 
-func (q *Queries) GetAllUserV2(ctx context.Context, arg GetAllUserV2Params) ([]User, error) {
+type GetAllUserV2Row struct {
+	ID        int32            `json:"id"`
+	Name      string           `json:"name"`
+	Email     string           `json:"email"`
+	Address   *string          `json:"address"`
+	Phone     *string          `json:"phone"`
+	IsActive  *bool            `json:"is_active"`
+	Role      *string          `json:"role"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	UserUuid  pgtype.UUID      `json:"user_uuid"`
+}
+
+func (q *Queries) GetAllUserV2(ctx context.Context, arg GetAllUserV2Params) ([]GetAllUserV2Row, error) {
 	rows, err := q.db.Query(ctx, getAllUserV2,
 		arg.Limit,
 		arg.Offset,
@@ -192,18 +240,17 @@ func (q *Queries) GetAllUserV2(ctx context.Context, arg GetAllUserV2Params) ([]U
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []GetAllUserV2Row{}
 	for rows.Next() {
-		var i User
+		var i GetAllUserV2Row
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Email,
-			&i.Password,
-			&i.Phone,
 			&i.Address,
-			&i.Role,
+			&i.Phone,
 			&i.IsActive,
+			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserUuid,
@@ -219,7 +266,7 @@ func (q *Queries) GetAllUserV2(ctx context.Context, arg GetAllUserV2Params) ([]U
 }
 
 const getByUuid = `-- name: GetByUuid :one
-select id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid
+select id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid, name_search, email_search
 from users
 where user_uuid = $1::uuid
 `
@@ -239,6 +286,8 @@ func (q *Queries) GetByUuid(ctx context.Context, userUuid pgtype.UUID) (User, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserUuid,
+		&i.NameSearch,
+		&i.EmailSearch,
 	)
 	return i, err
 }
@@ -247,7 +296,7 @@ const softDeleteUser = `-- name: SoftDeleteUser :one
 update users
 SET is_active = false
 where user_uuid = $1::uuid
-returning id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid
+returning id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid, name_search, email_search
 `
 
 func (q *Queries) SoftDeleteUser(ctx context.Context, userUuid pgtype.UUID) (User, error) {
@@ -265,6 +314,8 @@ func (q *Queries) SoftDeleteUser(ctx context.Context, userUuid pgtype.UUID) (Use
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserUuid,
+		&i.NameSearch,
+		&i.EmailSearch,
 	)
 	return i, err
 }
@@ -278,7 +329,7 @@ SET name = $1::text,
     role = $5,
     is_active = $6::boolean
 where user_uuid = $7::uuid
-returning id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid
+returning id, name, email, password, phone, address, role, is_active, created_at, updated_at, user_uuid, name_search, email_search
 `
 
 type UpdateUserParams struct {
@@ -314,6 +365,8 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserUuid,
+		&i.NameSearch,
+		&i.EmailSearch,
 	)
 	return i, err
 }

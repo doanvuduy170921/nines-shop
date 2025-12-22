@@ -89,7 +89,20 @@ func (au *AuthHandler) CreateUser(c *gin.Context) {
 		utils.ResponseError(c, err)
 		return
 	}
-	userRes := dto.MapUserToResponse(userCreated)
 
-	utils.ResponseSuccess(c, http.StatusCreated, userRes, "Create User Success")
+	utils.ResponseSuccess(c, http.StatusCreated, userCreated, "Create User Success")
+}
+
+func (au *AuthHandler) ValidateOTPAndActive(c *gin.Context) {
+	var input dto.OTPCreateUserParam
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, validation.HandlerValidationError(err))
+		return
+	}
+	ctx := c.Request.Context()
+	if err := au.user.ActiveUser(ctx, input.Email, input.Otp); err != nil {
+		utils.ResponseError(c, err)
+		return
+	}
+	utils.ResponseSuccess(c, http.StatusNoContent, nil, "Active User Success")
 }

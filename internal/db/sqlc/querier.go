@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ActiveUser(ctx context.Context, userUuid pgtype.UUID) error
 	AddOrderItem(ctx context.Context, arg AddOrderItemParams) (OrderItem, error)
 	AddToCart(ctx context.Context, arg AddToCartParams) (Cart, error)
 	CountProduct(ctx context.Context, arg CountProductParams) (int64, error)
@@ -27,25 +28,37 @@ type Querier interface {
 	FindByEmail(ctx context.Context, email string) (User, error)
 	GetAll(ctx context.Context) ([]Brand, error)
 	GetAllCategories(ctx context.Context) ([]Category, error)
+	GetAllOrders(ctx context.Context) ([]GetAllOrdersRow, error)
 	GetAllPayment(ctx context.Context) ([]PaymentMethod, error)
 	GetAllProductByFilter(ctx context.Context, arg GetAllProductByFilterParams) ([]GetAllProductByFilterRow, error)
+	GetAllStatusByOrderId(ctx context.Context, orderID int32) ([]GetAllStatusByOrderIdRow, error)
+	GetAllStatusByOrderIdV2(ctx context.Context, id int32) ([]GetAllStatusByOrderIdV2Row, error)
 	GetAllUser(ctx context.Context) ([]User, error)
-	GetAllUserV2(ctx context.Context, arg GetAllUserV2Params) ([]User, error)
+	GetAllUserV2(ctx context.Context, arg GetAllUserV2Params) ([]GetAllUserV2Row, error)
 	GetByPOrderItemId(ctx context.Context, id int32) ([]PendingOrderItem, error)
 	GetByUuid(ctx context.Context, userUuid pgtype.UUID) (User, error)
 	GetCartsByUserId(ctx context.Context, userID int32) ([]GetCartsByUserIdRow, error)
+	GetCountItem(ctx context.Context, id int32) (int64, error)
+	GetCountItems(ctx context.Context, id int32) (int64, error)
 	GetImagesByProductId(ctx context.Context, id int32) ([]string, error)
+	GetListOrderByOrderId(ctx context.Context, arg GetListOrderByOrderIdParams) ([]GetListOrderByOrderIdRow, error)
+	GetOrderById(ctx context.Context, orderID int32) (Order, error)
+	GetOrderDetailById(ctx context.Context, id int32) ([]GetOrderDetailByIdRow, error)
 	GetOrderItemByUserId(ctx context.Context, id int32) ([]GetOrderItemByUserIdRow, error)
 	GetPOrderById(ctx context.Context, id int32) (PendingOrder, error)
 	GetProductByCategoryId(ctx context.Context, id int32) ([]GetProductByCategoryIdRow, error)
 	GetProductById(ctx context.Context, id int32) (Product, error)
 	GetProductBySlug(ctx context.Context, slug string) (GetProductBySlugRow, error)
+	GetTop8ProductSeller(ctx context.Context, cateID *int32) ([]GetTop8ProductSellerRow, error)
 	SaveAndUploadImg(ctx context.Context, arg SaveAndUploadImgParams) (ProductImage, error)
 	SoftDeleteUser(ctx context.Context, userUuid pgtype.UUID) (User, error)
 	UpdateAllCart(ctx context.Context, arg UpdateAllCartParams) (Cart, error)
 	UpdateCart(ctx context.Context, arg UpdateCartParams) (Cart, error)
+	UpdateOrderPayment(ctx context.Context, arg UpdateOrderPaymentParams) error
+	UpdateStatusForUser(ctx context.Context, arg UpdateStatusForUserParams) error
 	UpdateThumbnail(ctx context.Context, arg UpdateThumbnailParams) (Product, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	ViewDetailForMyOrder(ctx context.Context, orderID int32) ([]ViewDetailForMyOrderRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

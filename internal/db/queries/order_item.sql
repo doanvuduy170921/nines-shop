@@ -33,3 +33,10 @@ FROM order_items oi
          JOIN payment_methods p ON p.id = o.payment_method_id
 WHERE o.user_id = @id::int
 ORDER BY oi.created_at DESC;
+
+
+-- name: GetCountItem :one
+SELECT COUNT(*) AS count
+FROM order_items o
+WHERE o.order_id = @id
+GROUP BY o.order_id;

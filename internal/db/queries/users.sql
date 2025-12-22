@@ -3,8 +3,8 @@ SELECT * FROM users;
 
 
 -- name: CreateUser :one
-INSERT INTO users (name,email,password,phone,address,role)
-values ($1,$2,$3,$4,$5,$6)
+INSERT INTO users (name,email,password,phone,address,role,is_active)
+values ($1,$2,$3,$4,$5,$6,$7)
 returning *;
 
 -- name: FindByEmail :one
@@ -12,42 +12,57 @@ select * from users
 where email = $1;
 
 -- name: GetAllUserV2 :many
-SELECT *
-FROM users
+SELECT u.id,
+       u.name,
+       u.email,
+       u.address,
+       u.phone,
+       u.is_active,
+       u.role,
+       u.created_at,
+       u.updated_at,
+       u.user_uuid
+FROM users u
 WHERE created_at IS NOT NULL
   AND (
-    @search::text = ''
-    OR name ILIKE '%' || @search || '%'
-    OR email ILIKE '%' || @search || '%'
+    sqlc.narg('search')::text IS NULL
+    OR sqlc.narg('search')::text = ''
+    OR u.name_search LIKE '%' || LOWER(sqlc.narg('search')::text) || '%'
+    OR u.email_search LIKE '%' || LOWER(sqlc.narg('search')::text) || '%'
     )
   AND (
-    @role::text = '' OR role = @role
+    sqlc.narg('role')::text IS NULL
+    OR sqlc.narg('role')::text = ''
+    OR u.role = sqlc.narg('role')::text
     )
   AND (
-    @is_active_filter::text = ''
-    OR is_active = @is_active::bool
+    sqlc.narg('is_active_filter')::text IS NULL
+    OR sqlc.narg('is_active_filter')::text = ''
+    OR u.is_active = sqlc.narg('is_active')::bool
     )
-order by updated_at desc 
-LIMIT $1
-OFFSET $2;
+ORDER BY u.updated_at DESC, u.id DESC
+    LIMIT $1 OFFSET $2;
 
 -- name: CountUser :one
-SELECT count(*)
-FROM users
+SELECT COUNT(*)
+FROM users u
 WHERE created_at IS NOT NULL
   AND (
-    @search::text = ''
-    OR name ILIKE '%' || @search || '%'
-    OR email ILIKE '%' || @search || '%'
+    sqlc.narg('search')::text IS NULL
+    OR sqlc.narg('search')::text = ''
+    OR u.name_search LIKE '%' || LOWER(sqlc.narg('search')::text) || '%'
+    OR u.email_search LIKE '%' || LOWER(sqlc.narg('search')::text) || '%'
     )
   AND (
-    @role::text = '' OR role = @role
+    sqlc.narg('role')::text IS NULL
+    OR sqlc.narg('role')::text = ''
+    OR u.role = sqlc.narg('role')::text
     )
   AND (
-    @is_active_filter::text = ''
-    OR is_active = @is_active::bool
-    )
-    ;
+    sqlc.narg('is_active_filter')::text IS NULL
+    OR sqlc.narg('is_active_filter')::text = ''
+    OR u.is_active = sqlc.narg('is_active')::bool
+    );
 
 -- name: SoftDeleteUser :one
 update users
@@ -71,3 +86,9 @@ returning *;
 select *
 from users
 where user_uuid = @user_uuid::uuid;
+
+
+-- name: ActiveUser :exec
+update users
+set is_active = true
+where user_uuid = sqlc.arg(user_uuid);

@@ -38,12 +38,19 @@ and p.price <= coalesce(@max_price::int,99999999)
 and(
     @status::text ='' OR p.status = @status::text
     )
-
+and(
+    @brand_id::int =0
+    or p.brand_id = @brand_id::int
+    )
 and(
      @category_id::int = 0
     or p.category_id = @category_id::int
     )
-order by p.updated_at desc
+order by
+    CASE WHEN @sort_by::text = 'price_asc' THEN p.price END asc,
+    CASE WHEN @sort_by::text = 'price_desc' THEN p.price END desc ,
+    CASE WHEN @sort_by::text = 'newest' THEN p.updated_at END desc,
+    p.updated_at desc
 limit $1
 offset $2;
 
@@ -128,4 +135,17 @@ where p.created_at is not null
   and(
     p.slug = @slug::text
     );
+
+-- name: GetTop8ProductSeller :many
+select  p.id,
+        p.name,
+        p.price,
+        p.discount_price,
+        p.thumbnail,
+        p.slug
+from products p
+where category_id = sqlc.arg(cate_id)
+order by discount_price desc
+    limit 8;
+
 

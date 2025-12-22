@@ -34,6 +34,21 @@ services:
     command: redis-server /usr/local/etc/redis/redis.conf
     networks:
       app-networks:
+
+  rabbitmq:
+    image: rabbitmq:4.2.2-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+        RABBITMQ_DEFAULT_USER: guest
+        RABBITMQ_DEFAULT_PASS: guest
+
+    networks:
+      app-networks:
+
 volumes:
   pgdata:
   redis_data:

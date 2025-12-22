@@ -12,15 +12,23 @@ import (
 )
 
 const createOrder = `-- name: CreateOrder :one
-INSERT INTO orders(user_id,name,email,phone,payment_method_id,address,subtotal,total_amount,shipping_price,tax,status)
-VALUES ($1,$2,$3,$4,$5,$6,
-        $7::NUMERIC(10,2),
-        $8::NUMERIC(10,2),
-        $9::NUMERIC(10,2),
-        $10::NUMERIC(10,2),
-        $11
+INSERT INTO orders(
+    user_id, name, email, phone, payment_method_id, address,
+    subtotal, total_amount, shipping_price, tax, status, amount_item,
+    transaction_id, payment_status
+)
+VALUES (
+           $1, $2, $3, $4, $5, $6,
+           $7::NUMERIC(10,2),
+           $8::NUMERIC(10,2),
+           $9::NUMERIC(10,2),
+           $10::NUMERIC(10,2),
+           $11,
+           $12,
+           $13,
+           $14
        )
-    RETURNING id, user_id, name, email, phone, address, payment_method_id, subtotal, shipping_price, tax, total_amount, status, created_at, updated_at, payment_status, transaction_id, delivered_at
+    RETURNING id, user_id, name, email, phone, address, payment_method_id, subtotal, shipping_price, tax, total_amount, status, created_at, updated_at, payment_status, transaction_id, delivered_at, amount_item
 `
 
 type CreateOrderParams struct {
@@ -35,6 +43,9 @@ type CreateOrderParams struct {
 	ShippingPrice   pgtype.Numeric `json:"shipping_price"`
 	Tax             pgtype.Numeric `json:"tax"`
 	Status          string         `json:"status"`
+	AmountItem      *int32         `json:"amount_item"`
+	TransactionID   *string        `json:"transaction_id"`
+	PaymentStatus   string         `json:"payment_status"`
 }
 
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
@@ -50,6 +61,9 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.ShippingPrice,
 		arg.Tax,
 		arg.Status,
+		arg.AmountItem,
+		arg.TransactionID,
+		arg.PaymentStatus,
 	)
 	var i Order
 	err := row.Scan(
@@ -70,6 +84,355 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.PaymentStatus,
 		&i.TransactionID,
 		&i.DeliveredAt,
+		&i.AmountItem,
 	)
 	return i, err
+}
+
+const getAllOrders = `-- name: GetAllOrders :many
+select o.id,
+       o.name,
+       o.created_at,
+       o.status,
+       o.total_amount,
+       o.amount_item
+from orders o
+order by o.created_at desc
+`
+
+type GetAllOrdersRow struct {
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	Status      string           `json:"status"`
+	TotalAmount pgtype.Numeric   `json:"total_amount"`
+	AmountItem  *int32           `json:"amount_item"`
+}
+
+func (q *Queries) GetAllOrders(ctx context.Context) ([]GetAllOrdersRow, error) {
+	rows, err := q.db.Query(ctx, getAllOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllOrdersRow{}
+	for rows.Next() {
+		var i GetAllOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.Status,
+			&i.TotalAmount,
+			&i.AmountItem,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getListOrderByOrderId = `-- name: GetListOrderByOrderId :many
+select
+    o.id,
+    o.status,
+    o.created_at,
+    o.amount_item,
+    o.total_amount,
+    (
+        select array_agg(oi.product_thumbnail)
+        from order_items oi
+        where oi.order_id = o.id
+    ) as preview_thumbnails
+from orders o
+where
+    o.user_id = $3::int
+and (
+    $4::int is null
+    or o.id = $4::int
+)
+and (
+    $5::text is null
+    or o.status = $5::text
+)
+order by o.created_at desc
+    limit $1
+offset $2
+`
+
+type GetListOrderByOrderIdParams struct {
+	Limit  int32   `json:"limit"`
+	Offset int32   `json:"offset"`
+	UserID int32   `json:"user_id"`
+	Search *int32  `json:"search"`
+	Status *string `json:"status"`
+}
+
+type GetListOrderByOrderIdRow struct {
+	ID                int32            `json:"id"`
+	Status            string           `json:"status"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	AmountItem        *int32           `json:"amount_item"`
+	TotalAmount       pgtype.Numeric   `json:"total_amount"`
+	PreviewThumbnails interface{}      `json:"preview_thumbnails"`
+}
+
+func (q *Queries) GetListOrderByOrderId(ctx context.Context, arg GetListOrderByOrderIdParams) ([]GetListOrderByOrderIdRow, error) {
+	rows, err := q.db.Query(ctx, getListOrderByOrderId,
+		arg.Limit,
+		arg.Offset,
+		arg.UserID,
+		arg.Search,
+		arg.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetListOrderByOrderIdRow{}
+	for rows.Next() {
+		var i GetListOrderByOrderIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.AmountItem,
+			&i.TotalAmount,
+			&i.PreviewThumbnails,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOrderById = `-- name: GetOrderById :one
+select id, user_id, name, email, phone, address, payment_method_id, subtotal, shipping_price, tax, total_amount, status, created_at, updated_at, payment_status, transaction_id, delivered_at, amount_item
+from orders
+where id = $1
+`
+
+func (q *Queries) GetOrderById(ctx context.Context, orderID int32) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrderById, orderID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Address,
+		&i.PaymentMethodID,
+		&i.Subtotal,
+		&i.ShippingPrice,
+		&i.Tax,
+		&i.TotalAmount,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PaymentStatus,
+		&i.TransactionID,
+		&i.DeliveredAt,
+		&i.AmountItem,
+	)
+	return i, err
+}
+
+const getOrderDetailById = `-- name: GetOrderDetailById :many
+select o.name as customer_name,
+       o.id,
+       o.email,
+       o.address,
+       o.phone,
+       p.name as payment_method_name,
+       o.subtotal,
+       o.shipping_price,
+       o.tax,
+       o.total_amount,
+       o.status,
+       o.created_at as order_created_at,
+       oi.product_name,
+       oi.quantity,
+       oi.price as item_price,
+       o.transaction_id,
+       o.payment_status,
+       oi.product_thumbnail
+from orders o
+join order_items oi on oi.order_id = o.id
+join payment_methods p on p.id = o.payment_method_id
+where o.id =$1
+`
+
+type GetOrderDetailByIdRow struct {
+	CustomerName      string           `json:"customer_name"`
+	ID                int32            `json:"id"`
+	Email             string           `json:"email"`
+	Address           string           `json:"address"`
+	Phone             string           `json:"phone"`
+	PaymentMethodName string           `json:"payment_method_name"`
+	Subtotal          pgtype.Numeric   `json:"subtotal"`
+	ShippingPrice     pgtype.Numeric   `json:"shipping_price"`
+	Tax               pgtype.Numeric   `json:"tax"`
+	TotalAmount       pgtype.Numeric   `json:"total_amount"`
+	Status            string           `json:"status"`
+	OrderCreatedAt    pgtype.Timestamp `json:"order_created_at"`
+	ProductName       string           `json:"product_name"`
+	Quantity          int32            `json:"quantity"`
+	ItemPrice         pgtype.Numeric   `json:"item_price"`
+	TransactionID     *string          `json:"transaction_id"`
+	PaymentStatus     string           `json:"payment_status"`
+	ProductThumbnail  *string          `json:"product_thumbnail"`
+}
+
+func (q *Queries) GetOrderDetailById(ctx context.Context, id int32) ([]GetOrderDetailByIdRow, error) {
+	rows, err := q.db.Query(ctx, getOrderDetailById, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetOrderDetailByIdRow{}
+	for rows.Next() {
+		var i GetOrderDetailByIdRow
+		if err := rows.Scan(
+			&i.CustomerName,
+			&i.ID,
+			&i.Email,
+			&i.Address,
+			&i.Phone,
+			&i.PaymentMethodName,
+			&i.Subtotal,
+			&i.ShippingPrice,
+			&i.Tax,
+			&i.TotalAmount,
+			&i.Status,
+			&i.OrderCreatedAt,
+			&i.ProductName,
+			&i.Quantity,
+			&i.ItemPrice,
+			&i.TransactionID,
+			&i.PaymentStatus,
+			&i.ProductThumbnail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateOrderPayment = `-- name: UpdateOrderPayment :exec
+UPDATE orders
+SET
+    payment_status = $1::text,
+    transaction_id = $2,
+    updated_at = now()
+WHERE id = $3
+`
+
+type UpdateOrderPaymentParams struct {
+	PaymentStatus string  `json:"payment_status"`
+	TransactionID *string `json:"transaction_id"`
+	ID            int32   `json:"id"`
+}
+
+func (q *Queries) UpdateOrderPayment(ctx context.Context, arg UpdateOrderPaymentParams) error {
+	_, err := q.db.Exec(ctx, updateOrderPayment, arg.PaymentStatus, arg.TransactionID, arg.ID)
+	return err
+}
+
+const updateStatusForUser = `-- name: UpdateStatusForUser :exec
+UPDATE orders
+SET status = $1
+WHERE id = $2
+`
+
+type UpdateStatusForUserParams struct {
+	Status  string `json:"status"`
+	OrderID int32  `json:"order_id"`
+}
+
+func (q *Queries) UpdateStatusForUser(ctx context.Context, arg UpdateStatusForUserParams) error {
+	_, err := q.db.Exec(ctx, updateStatusForUser, arg.Status, arg.OrderID)
+	return err
+}
+
+const viewDetailForMyOrder = `-- name: ViewDetailForMyOrder :many
+select p.name as payment_method_name,
+       o.shipping_price,
+       oi.product_name as product_name,
+       oi.quantity,
+       oi.price,
+       o.amount_item,
+       o.subtotal,
+       o.tax,
+       o.total_amount,
+       o.name as user_name,
+       o.address,
+       o.phone,
+       oi.product_thumbnail
+from orders o
+join payment_methods p on p.id = o.payment_method_id
+join order_items oi on oi.order_id = o.id
+where o.id = $1
+`
+
+type ViewDetailForMyOrderRow struct {
+	PaymentMethodName string         `json:"payment_method_name"`
+	ShippingPrice     pgtype.Numeric `json:"shipping_price"`
+	ProductName       string         `json:"product_name"`
+	Quantity          int32          `json:"quantity"`
+	Price             pgtype.Numeric `json:"price"`
+	AmountItem        *int32         `json:"amount_item"`
+	Subtotal          pgtype.Numeric `json:"subtotal"`
+	Tax               pgtype.Numeric `json:"tax"`
+	TotalAmount       pgtype.Numeric `json:"total_amount"`
+	UserName          string         `json:"user_name"`
+	Address           string         `json:"address"`
+	Phone             string         `json:"phone"`
+	ProductThumbnail  *string        `json:"product_thumbnail"`
+}
+
+func (q *Queries) ViewDetailForMyOrder(ctx context.Context, orderID int32) ([]ViewDetailForMyOrderRow, error) {
+	rows, err := q.db.Query(ctx, viewDetailForMyOrder, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ViewDetailForMyOrderRow{}
+	for rows.Next() {
+		var i ViewDetailForMyOrderRow
+		if err := rows.Scan(
+			&i.PaymentMethodName,
+			&i.ShippingPrice,
+			&i.ProductName,
+			&i.Quantity,
+			&i.Price,
+			&i.AmountItem,
+			&i.Subtotal,
+			&i.Tax,
+			&i.TotalAmount,
+			&i.UserName,
+			&i.Address,
+			&i.Phone,
+			&i.ProductThumbnail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

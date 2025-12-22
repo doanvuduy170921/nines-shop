@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
+	"net/http"
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/dto"
 	"nineshop-be/internal/repository"
@@ -58,9 +59,9 @@ func (ps *productService) CreateProduct(ctx *gin.Context, arg dto.CreateProductP
 	return product, err
 }
 
-func (ps *productService) GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.GetAllProductByFilterRow, int64, error) {
+func (ps *productService) GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice, brandId int32, search, status string) ([]sqlc.GetAllProductByFilterRow, int64, error) {
 	c := ctx.Request.Context()
-	products, err := ps.repo.GetAllProductByFilter(c, limit, page, categoryId, minPrice, maxPrice, search, status)
+	products, err := ps.repo.GetAllProductByFilter(c, limit, page, categoryId, minPrice, maxPrice, brandId, search, status)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -101,5 +102,13 @@ func (ps *productService) GetImagesBySlug(c *gin.Context, slug string) ([]string
 		return nil, err
 	}
 	return images, nil
+}
 
+func (ps *productService) GetTop8ProductSeller(c *gin.Context, cateID *int32) ([]sqlc.GetTop8ProductSellerRow, error) {
+	ctx := c.Request.Context()
+	products, err := ps.repo.GetTop8ProductSeller(ctx, cateID)
+	if err != nil {
+		return nil, utils.WrapError(err, "Get Top 3 seller product fail", http.StatusBadRequest)
+	}
+	return products, nil
 }

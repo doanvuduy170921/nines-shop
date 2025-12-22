@@ -24,6 +24,7 @@ func (ur *UserRoute) Register(r *gin.RouterGroup) {
 		user.PUT("/soft-delete/:uuid", middleware.RoleMiddleware("admin"), ur.handler.SoftDelete)
 		user.PUT("/update/:uuid", ur.handler.UpdateUser)
 		user.GET("/get/:uuid", ur.handler.GetByUuid)
+
 	}
 
 }

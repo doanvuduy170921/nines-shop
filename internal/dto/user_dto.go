@@ -45,7 +45,7 @@ func MapDtoToParams(input CreateUserParams) sqlc.CreateUserParams {
 	if input.Role == "" {
 		input.Role = "customer"
 	}
-
+	active := false
 	return sqlc.CreateUserParams{
 		Name:     input.Name,
 		Email:    input.Email,
@@ -53,6 +53,7 @@ func MapDtoToParams(input CreateUserParams) sqlc.CreateUserParams {
 		Phone:    &input.Phone,
 		Address:  &input.Address,
 		Role:     &input.Role,
+		IsActive: &active,
 	}
 }
 
@@ -143,4 +144,9 @@ func pgTimeToString(input pgtype.Timestamp) string {
 	}
 	return input.Time.Format("2006-01-02 15:04:05")
 
+}
+
+type CreateUserRes struct {
+	Email     string `json:"email" binding:"required"`
+	ExpiredAt string `json:"expired_at" binding:"required"`
 }

@@ -22,3 +22,7 @@ func (or *orderItemRepository) AddOrderItem(ctx context.Context, arg sqlc.AddOrd
 func (or *orderItemRepository) GetListOrderItemsByUserId(ctx context.Context, id int32) ([]sqlc.GetOrderItemByUserIdRow, error) {
 	return or.DB.GetOrderItemByUserId(ctx, id)
 }
+
+func (or *orderItemRepository) GetCountItem(ctx context.Context, id int32) (int64, error) {
+	return or.DB.GetCountItem(ctx, id)
+}

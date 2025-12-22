@@ -61,9 +61,9 @@ func (uh *UserHandler) GetAllByFilter(c *gin.Context) {
 		utils.ResponseError(c, err)
 		return
 	}
-	usersRes := dto.MapUsersToResponse(users)
+
 	paginationRes := pagination.PaginationRes{
-		Data:      usersRes,
+		Data:      users,
 		Total:     int32(count),
 		Page:      utils.StringToInt32(page),
 		Limit:     utils.StringToInt32(limit),
@@ -126,4 +126,18 @@ func (uh *UserHandler) GetByUuid(c *gin.Context) {
 	}
 	userRes := dto.MapUserToResponse(user)
 	utils.ResponseSuccess(c, http.StatusOK, userRes, "Get User Success")
+}
+
+func (uh *UserHandler) ValidateOTPAndActive(c *gin.Context) {
+	var input dto.OTPCreateUserParam
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, validation.HandlerValidationError(err))
+		return
+	}
+	ctx := c.Request.Context()
+	if err := uh.service.ActiveUser(ctx, input.Email, input.Otp); err != nil {
+		utils.ResponseError(c, err)
+		return
+	}
+	utils.ResponseSuccess(c, http.StatusNoContent, nil, "Active User Success")
 }

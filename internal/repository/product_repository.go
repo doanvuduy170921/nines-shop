@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"nineshop-be/internal/db/sqlc"
 )
 
@@ -24,11 +23,9 @@ func (pr *productRepository) CreateProduct(ctx context.Context, arg sqlc.CreateP
 	return product, nil
 }
 
-func (pr *productRepository) GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) ([]sqlc.GetAllProductByFilterRow, error) {
+func (pr *productRepository) GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice, brandId int32, search, status string) ([]sqlc.GetAllProductByFilterRow, error) {
 	offset := (page - 1) * limit
 
-	fmt.Printf("Params: limit=%d, offset=%d, search=%s, status=%s, categoryId=%d, minPrice=%d, maxPrice=%d\n",
-		limit, offset, search, status, categoryId, minPrice, maxPrice)
 	products, err := pr.DB.GetAllProductByFilter(ctx, sqlc.GetAllProductByFilterParams{
 		Limit:      limit,
 		Offset:     offset,
@@ -37,6 +34,7 @@ func (pr *productRepository) GetAllProductByFilter(ctx context.Context, limit, p
 		CategoryID: categoryId,
 		MinPrice:   minPrice,
 		MaxPrice:   maxPrice,
+		BrandID:    brandId,
 	})
 	if err != nil {
 		return nil, err
@@ -87,4 +85,8 @@ func (pr *productRepository) GetProductBySlug(ctx context.Context, slug string) 
 		return sqlc.GetProductBySlugRow{}, err
 	}
 	return product, nil
+}
+
+func (pr *productRepository) GetTop8ProductSeller(ctx context.Context, cateID *int32) ([]sqlc.GetTop8ProductSellerRow, error) {
+	return pr.DB.GetTop8ProductSeller(ctx, cateID)
 }

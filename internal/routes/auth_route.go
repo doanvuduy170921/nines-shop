@@ -22,5 +22,6 @@ func (ur *AuthRoute) Register(r *gin.RouterGroup) {
 		auth.POST("refresh", ur.handler.RefreshToken)
 		auth.POST("/logout", ur.handler.Logout)
 		auth.POST("/create", ur.handler.CreateUser)
+		auth.POST("/validate-otp", ur.handler.ValidateOTPAndActive)
 	}
 }

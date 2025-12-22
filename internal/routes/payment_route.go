@@ -19,6 +19,8 @@ func (cr *PaymentRoute) Register(r *gin.RouterGroup) {
 	payment := r.Group("/payment")
 	{
 		payment.GET("/get-all", cr.handler.GetAllPayment)
+		payment.GET("/vnpay/ipn", cr.handler.CallBackFromVnPay)
+		payment.GET("/vnpay/return", cr.handler.Redirect)
 	}
 
 }

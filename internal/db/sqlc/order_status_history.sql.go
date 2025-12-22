@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createOrderStatusHistory = `-- name: CreateOrderStatusHistory :one
@@ -32,4 +34,100 @@ func (q *Queries) CreateOrderStatusHistory(ctx context.Context, arg CreateOrderS
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getAllStatusByOrderId = `-- name: GetAllStatusByOrderId :many
+select o.id,
+       o.status as order_status,
+       o.amount_item,
+       o.created_at as order_created_at,
+       osh.status as order_history_status,
+       osh.note,
+       osh.created_at as order_history_created_at,
+       oi.product_thumbnail
+from order_status_history osh
+        join orders o on o.id = osh.order_id
+join order_items oi on oi.order_id = osh.order_id
+where osh.order_id =$1
+`
+
+type GetAllStatusByOrderIdRow struct {
+	ID                    int32            `json:"id"`
+	OrderStatus           string           `json:"order_status"`
+	AmountItem            *int32           `json:"amount_item"`
+	OrderCreatedAt        pgtype.Timestamp `json:"order_created_at"`
+	OrderHistoryStatus    string           `json:"order_history_status"`
+	Note                  *string          `json:"note"`
+	OrderHistoryCreatedAt pgtype.Timestamp `json:"order_history_created_at"`
+	ProductThumbnail      *string          `json:"product_thumbnail"`
+}
+
+func (q *Queries) GetAllStatusByOrderId(ctx context.Context, orderID int32) ([]GetAllStatusByOrderIdRow, error) {
+	rows, err := q.db.Query(ctx, getAllStatusByOrderId, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllStatusByOrderIdRow{}
+	for rows.Next() {
+		var i GetAllStatusByOrderIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderStatus,
+			&i.AmountItem,
+			&i.OrderCreatedAt,
+			&i.OrderHistoryStatus,
+			&i.Note,
+			&i.OrderHistoryCreatedAt,
+			&i.ProductThumbnail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllStatusByOrderIdV2 = `-- name: GetAllStatusByOrderIdV2 :many
+select id,
+       status,
+       note,
+       created_at
+from order_status_history
+where order_id = $1
+`
+
+type GetAllStatusByOrderIdV2Row struct {
+	ID        int32            `json:"id"`
+	Status    string           `json:"status"`
+	Note      *string          `json:"note"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetAllStatusByOrderIdV2(ctx context.Context, id int32) ([]GetAllStatusByOrderIdV2Row, error) {
+	rows, err := q.db.Query(ctx, getAllStatusByOrderIdV2, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllStatusByOrderIdV2Row{}
+	for rows.Next() {
+		var i GetAllStatusByOrderIdV2Row
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.Note,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

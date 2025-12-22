@@ -73,3 +73,17 @@ func (q *Queries) GetByPOrderItemId(ctx context.Context, id int32) ([]PendingOrd
 	}
 	return items, nil
 }
+
+const getCountItems = `-- name: GetCountItems :one
+select count(*) as count
+from pending_order_items
+where pending_order_id = $1
+group by pending_order_id
+`
+
+func (q *Queries) GetCountItems(ctx context.Context, id int32) (int64, error) {
+	row := q.db.QueryRow(ctx, getCountItems, id)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}

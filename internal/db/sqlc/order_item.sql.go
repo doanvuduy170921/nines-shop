@@ -49,6 +49,20 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (Ord
 	return i, err
 }
 
+const getCountItem = `-- name: GetCountItem :one
+SELECT COUNT(*) AS count
+FROM order_items o
+WHERE o.order_id = $1
+GROUP BY o.order_id
+`
+
+func (q *Queries) GetCountItem(ctx context.Context, id int32) (int64, error) {
+	row := q.db.QueryRow(ctx, getCountItem, id)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getOrderItemByUserId = `-- name: GetOrderItemByUserId :many
 SELECT
     -- order info

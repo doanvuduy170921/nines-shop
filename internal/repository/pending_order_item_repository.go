@@ -26,3 +26,7 @@ func (nr *pendingOrderItemRepository) Create(ctx context.Context, arg sqlc.Creat
 func (nr *pendingOrderItemRepository) GetByPOrderItemId(ctx context.Context, id int32) ([]sqlc.PendingOrderItem, error) {
 	return nr.DB.GetByPOrderItemId(ctx, id)
 }
+
+func (nr *pendingOrderItemRepository) GetCountItem(ctx context.Context, id int32) (int64, error) {
+	return nr.DB.GetCountItem(ctx, id)
+}

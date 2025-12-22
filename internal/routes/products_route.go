@@ -24,6 +24,10 @@ func (pr *ProductRoute) Register(r *gin.RouterGroup) {
 		product.GET("/get-cate-id/:id", middleware.RoleMiddleware("admin"), pr.handler.GetAllByCateId)
 		product.GET("/get-by-slug/:slug", pr.handler.GetAllBySlug)
 		product.GET("/get-images-by-slug/:slug", pr.handler.GetImagesBySlug)
+		product.GET("/top-3-seller", pr.handler.GetTop3Seller)
+		product.GET("/top-8-laptop", pr.handler.GetTop8Laptop)
+		product.GET("/top-8-mouse", pr.handler.GetTop8Mouse)
+		product.GET("/top-4-tablet", pr.handler.GetTop4Tablet)
 	}
 
 }

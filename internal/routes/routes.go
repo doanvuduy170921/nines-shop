@@ -21,7 +21,7 @@ func RegisterRoute(cache cache.RedisCacheService, r *gin.Engine, routes ...Route
 		middleware.AuthMiddleware(tokenService, cache))
 	for _, route := range routes {
 		switch route.(type) {
-		case *AuthRoute, *ProductImagesRoute:
+		case *AuthRoute, *ProductImagesRoute, *PaymentRoute:
 			route.Register(api)
 		default:
 			route.Register(protected)

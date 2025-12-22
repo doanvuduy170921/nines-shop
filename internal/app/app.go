@@ -48,6 +48,7 @@ func NewApplication(cfg *config.Config) *Application {
 		NewPendingOrderModule(),
 		NewPaymentModule(),
 		NewOrderItemModule(),
+		NewOrderModule(),
 	}
 
 	// init validator

@@ -49,6 +49,7 @@ type Order struct {
 	PaymentStatus   string           `json:"payment_status"`
 	TransactionID   *string          `json:"transaction_id"`
 	DeliveredAt     pgtype.Timestamp `json:"delivered_at"`
+	AmountItem      *int32           `json:"amount_item"`
 }
 
 type OrderItem struct {
@@ -93,6 +94,7 @@ type PendingOrder struct {
 	Tax             pgtype.Numeric   `json:"tax"`
 	Status          *string          `json:"status"`
 	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	AmountItem      *int32           `json:"amount_item"`
 }
 
 type PendingOrderItem struct {
@@ -128,15 +130,17 @@ type ProductImage struct {
 }
 
 type User struct {
-	ID        int32            `json:"id"`
-	Name      string           `json:"name"`
-	Email     string           `json:"email"`
-	Password  string           `json:"password"`
-	Phone     *string          `json:"phone"`
-	Address   *string          `json:"address"`
-	Role      *string          `json:"role"`
-	IsActive  *bool            `json:"is_active"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-	UserUuid  pgtype.UUID      `json:"user_uuid"`
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	Email       string           `json:"email"`
+	Password    string           `json:"password"`
+	Phone       *string          `json:"phone"`
+	Address     *string          `json:"address"`
+	Role        *string          `json:"role"`
+	IsActive    *bool            `json:"is_active"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	UserUuid    pgtype.UUID      `json:"user_uuid"`
+	NameSearch  *string          `json:"name_search"`
+	EmailSearch *string          `json:"email_search"`
 }

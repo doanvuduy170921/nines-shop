@@ -7,3 +7,9 @@ returning *;
 select *
 from pending_order_items
 where pending_order_id = @id::int;
+
+-- name: GetCountItems :one
+select count(*) as count
+from pending_order_items
+where pending_order_id = @id
+group by pending_order_id;
