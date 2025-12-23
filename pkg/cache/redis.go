@@ -52,3 +52,14 @@ func (r *redisCacheService) Exists(key string) (bool, error) {
 	}
 	return count > 0, nil
 }
+func (r *redisCacheService) Incr(key string, ttl time.Duration) (int64, error) {
+
+	val, err := r.rdb.Incr(r.ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	if val == int64(1) {
+		r.rdb.Expire(r.ctx, key, ttl)
+	}
+	return val, nil
+}

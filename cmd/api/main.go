@@ -5,9 +5,13 @@ import (
 	"nineshop-be/internal/app"
 	"nineshop-be/internal/config"
 	"nineshop-be/internal/db"
+	"nineshop-be/internal/utils"
 )
 
 func main() {
+
+	utils.LoadEnv()
+
 	cfg := config.NewConfig()
 
 	if err := db.InitDB(); err != nil {

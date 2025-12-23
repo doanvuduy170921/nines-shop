@@ -7,7 +7,6 @@ import (
 	"log"
 	"nineshop-be/internal/config"
 	"nineshop-be/internal/db/sqlc"
-	"nineshop-be/internal/utils"
 	"time"
 )
 
@@ -17,7 +16,7 @@ var (
 )
 
 func InitDB() error {
-	utils.LoadEnv()
+
 	connStr := config.NewConfig().DNS()
 
 	conf, err := pgxpool.ParseConfig(connStr)
