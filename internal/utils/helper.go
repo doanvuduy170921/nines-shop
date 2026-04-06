@@ -21,13 +21,16 @@ func GetEnv(key, defaultVal string) string {
 }
 
 func LoadEnv() {
+	env := os.Getenv("ENVIRONMENT")
+	if env == "production" {
+		return // production dùng env vars từ Render, không cần file .env
+	}
 	err := godotenv.Load(".env")
 	if err != nil {
 		err = godotenv.Load("../.env")
 		if err != nil {
-			log.Fatal("Error loading .env file")
+			log.Println("⚠️ No .env file found, using system environment variables")
 		}
-
 	}
 }
 
