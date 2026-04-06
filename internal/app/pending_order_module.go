@@ -24,7 +24,8 @@ func NewPendingOrderModule() *PendingOrderModule {
 	OrderStatusHisRepo := repository.NewOrderStatusHistory(db.DB)
 	EmailConfig := config.NewEmailConfig()
 	EmailService := email.NewGmailService(*EmailConfig)
-	PendingOrderService := service.NewPendingOrderService(PendingOrderRepo, userRepo, PendingOrderItemRepo, EmailService, OrderRepo, OrderItemRepo, ProductRepo, OrderStatusHisRepo)
+	store := db.NewStore(db.DBPool)
+	PendingOrderService := service.NewPendingOrderService(store, PendingOrderRepo, userRepo, PendingOrderItemRepo, EmailService, OrderRepo, OrderItemRepo, ProductRepo, OrderStatusHisRepo)
 	PendingOrderHandler := handler.NewPendingOrderHandler(PendingOrderService)
 	PendingOrderRoute := routes.NewPendingOrderRoute(PendingOrderHandler)
 	return &PendingOrderModule{

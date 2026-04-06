@@ -18,19 +18,6 @@ type CreateProductParamDto struct {
 	StockQuantity    int     `json:"stock_quantity" binding:"required"`
 }
 
-func MapProductDtoToParams(input CreateProductParamDto) sqlc.CreateProductParams {
-	return sqlc.CreateProductParams{
-		Name:             input.Name,
-		BrandID:          IntToInt32(input.BrandID),
-		CategoryID:       IntToInt32(input.CategoryID),
-		Description:      &input.Description,
-		ShortDescription: &input.ShortDescription,
-		Price:            Float64ToPgTypeNumeric(input.Price),
-		DiscountPrice:    Float64ToPgTypeNumeric(input.DiscountPrice),
-		StockQuantity:    IntToInt32(input.StockQuantity),
-	}
-}
-
 type ProductResponse struct {
 	ID               int     `json:"id"`
 	Name             string  `json:"name"`
@@ -45,76 +32,6 @@ type ProductResponse struct {
 	StockQuantity    int32   `json:"stock_quantity"`
 	Status           string  `json:"status"`
 	Thumbnail        string  `json:"thumbnail"`
-}
-
-func MapSqlcProductToResponse(input sqlc.GetAllProductByFilterRow) ProductResponse {
-	return ProductResponse{
-		ID:               int(input.ID),
-		Name:             input.Name,
-		Slug:             input.Slug,
-		Sku:              input.Sku,
-		BrandName:        *input.BrandName,
-		CategoryName:     *input.CategoryName,
-		Description:      *input.Description,
-		ShortDescription: *input.ShortDescription,
-		Price:            pgTypeNumericToFloat64(input.Price),
-		DiscountPrice:    pgTypeNumericToFloat64(input.DiscountPrice),
-		StockQuantity:    *input.StockQuantity,
-		Status:           *input.Status,
-		Thumbnail:        input.Thumbnail,
-	}
-}
-
-func MapSqlcProductsToResponse(products []sqlc.GetAllProductByFilterRow) []ProductResponse {
-	productResponses := make([]ProductResponse, len(products))
-	for i, product := range products {
-		productResponses[i] = MapSqlcProductToResponse(product) // Gán trực tiếp
-	}
-	return productResponses
-}
-
-func MapProductCateIdToRes(product sqlc.GetProductByCategoryIdRow) ProductResponse {
-	return ProductResponse{
-		ID:               int(product.ID),
-		Name:             product.Name,
-		Slug:             product.Slug,
-		Sku:              product.Sku,
-		BrandName:        *product.BrandName,
-		CategoryName:     *product.CategoryName,
-		Description:      *product.Description,
-		ShortDescription: *product.ShortDescription,
-		Price:            pgTypeNumericToFloat64(product.Price),
-		DiscountPrice:    pgTypeNumericToFloat64(product.DiscountPrice),
-		StockQuantity:    *product.StockQuantity,
-		Status:           *product.Status,
-		Thumbnail:        product.Thumbnail,
-	}
-}
-
-func MapProductSlugToRes(product sqlc.GetProductBySlugRow) ProductResponse {
-	return ProductResponse{
-		ID:               int(product.ID),
-		Name:             product.Name,
-		Slug:             product.Slug,
-		Sku:              product.Sku,
-		BrandName:        *product.BrandName,
-		CategoryName:     *product.CategoryName,
-		Description:      *product.Description,
-		ShortDescription: *product.ShortDescription,
-		Price:            pgTypeNumericToFloat64(product.Price),
-		DiscountPrice:    pgTypeNumericToFloat64(product.DiscountPrice),
-		StockQuantity:    *product.StockQuantity,
-		Status:           *product.Status,
-		Thumbnail:        product.Thumbnail,
-	}
-}
-
-func MapProductsCateIdToRes(products []sqlc.GetProductByCategoryIdRow) []ProductResponse {
-	productResponses := make([]ProductResponse, len(products))
-	for i, product := range products {
-		productResponses[i] = MapProductCateIdToRes(product)
-	}
-	return productResponses
 }
 
 type CreateCategoryParamDto struct {
@@ -149,4 +66,47 @@ func Float64ToPgTypeNumeric(input float64) pgtype.Numeric {
 		panic(err)
 	}
 	return num
+}
+
+type AddProductRequestDto struct {
+	Name             string   `json:"name" binding:"required"`
+	BrandID          int      `json:"brand_id" binding:"required"`
+	CategoryID       int      `json:"category_id" binding:"required"`
+	Description      string   `json:"description" binding:"required"`
+	ShortDescription string   `json:"short_description" binding:"required"`
+	Status           string   `json:"status" binding:"required"`
+	Thumbnail        string   `json:"thumbnail" binding:"required"`
+	HasVariant       bool     `json:"has_variant" binding:"required"`
+	Images           []string `json:"images"`
+	Specifications   []struct {
+		SpecKey      string `json:"spec_key" binding:"required"`
+		SpecValue    string `json:"spec_value" binding:"required"`
+		DisplayOrder int    `json:"display_order" binding:"required"`
+	} `json:"specifications"`
+
+	Variants []struct {
+		Attributes    map[string]interface{} `json:"attributes" binding:"required"`
+		Price         float64                `json:"price" binding:"required"`
+		StockQuantity int32                  `json:"stock_quantity" binding:"required"`
+		Image         string                 `json:"image" binding:"required"`
+		IsActive      bool                   `json:"is_active" binding:"required"`
+	}
+}
+
+type GetTop3TrendingRes struct {
+	Images    []sqlc.GetTop3TrendingRow `json:"images"`
+	Laptops   []sqlc.GetTop3TrendingRow `json:"laptops"`
+	Keyboards []sqlc.GetTop3TrendingRow `json:"keyboards"`
+	Screens   []sqlc.GetTop3TrendingRow `json:"screens"`
+	Mouses    []sqlc.GetTop3TrendingRow `json:"mouses"`
+}
+
+type GetProductsRequest struct {
+	CateName   string  `form:"cate_name"`
+	Page       int32   `form:"page" binding:"required,min=1"`
+	Limit      int32   `form:"limit" binding:"required,min=1,max=100"`
+	SearchName string  `form:"search"`
+	MinPrice   float64 `form:"min_price"`
+	MaxPrice   float64 `form:"max_price"`
+	SortBy     bool    `form:"sort_by"` // Ví dụ: price, created_at
 }

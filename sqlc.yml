@@ -12,3 +12,8 @@ sql:
         emit_interface: true
         emit_empty_slices: true
         emit_pointers_for_null_types: true
+        overrides:
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"
+          - db_type: "json"
+            go_type: "encoding/json.RawMessage"

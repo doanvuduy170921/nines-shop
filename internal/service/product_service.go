@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgconn"
+	"encoding/json"
+	"github.com/jackc/pgx/v5"
+	"log"
 	"net/http"
+	"nineshop-be/internal/db"
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/dto"
 	"nineshop-be/internal/repository"
@@ -29,86 +30,152 @@ func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) Prod
 
 }
 
-func (ps *productService) CreateProduct(ctx *gin.Context, arg dto.CreateProductParamDto) (sqlc.Product, error) {
-	c := ctx.Request.Context()
-
-	sku := utils.GenProductSku(arg.Name)
-	slug := utils.GenProductSlug(arg.Name)
-	productDto := dto.MapProductDtoToParams(arg)
-
-	product, err := ps.repo.CreateProduct(c, sqlc.CreateProductParams{
-		Sku:              sku,
-		Slug:             slug,
-		Name:             productDto.Name,
-		BrandID:          productDto.BrandID,
-		CategoryID:       productDto.CategoryID,
-		Description:      productDto.Description,
-		ShortDescription: productDto.ShortDescription,
-		Price:            productDto.Price,
-		DiscountPrice:    productDto.DiscountPrice,
-		StockQuantity:    productDto.StockQuantity,
-	})
+func (ps *productService) GetAllProductByFilter(ctx context.Context) ([]sqlc.GetAllProductByFilterRow, error) {
+	products, err := ps.repo.GetAllProductByFilter(ctx)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return sqlc.Product{}, utils.WrapError(err, "Product is exists", utils.ErrorCodeBadRequest)
-		}
-
-		return sqlc.Product{}, err
-	}
-	return product, err
-}
-
-func (ps *productService) GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice, brandId int32, search, status string) ([]sqlc.GetAllProductByFilterRow, int64, error) {
-	c := ctx.Request.Context()
-	products, err := ps.repo.GetAllProductByFilter(c, limit, page, categoryId, minPrice, maxPrice, brandId, search, status)
-	if err != nil {
-		return nil, 0, err
-	}
-	count, err := ps.repo.CountProduct(c, limit, page, categoryId, minPrice, maxPrice, search, status)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return products, count, nil
-}
-
-func (ps *productService) GetProductByCategoryId(ctx *gin.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error) {
-	c := ctx.Request.Context()
-	products, err := ps.repo.GetProductByCategoryId(c, id)
-	if err != nil {
-		return nil, err
+		return nil, utils.HandleDbError(err)
 	}
 	return products, nil
 }
 
-func (ps *productService) GetProductBySlug(ctx *gin.Context, slug string) (sqlc.GetProductBySlugRow, error) {
-	c := ctx.Request.Context()
-	product, err := ps.repo.GetProductBySlug(c, slug)
+func (ps *productService) GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error) {
+	return ps.repo.GetListVariantByPid(ctx, productID)
+}
+
+func (ps *productService) AddProduct(ctx context.Context, input dto.AddProductRequestDto) (product sqlc.Product, err error) {
+	// tạo transaction
+	tx, err := db.DBPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return sqlc.GetProductBySlugRow{}, err
+		return sqlc.Product{}, utils.WrapError(err, "Create Transaction fail", http.StatusInternalServerError)
 	}
+	qTx := db.DB.WithTx(tx)
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	product, err = qTx.AddProduct(ctx, sqlc.AddProductParams{
+		Name:             input.Name,
+		Slug:             utils.GenProductSlug(input.Name),
+		BrandID:          utils.IntToPInt32(input.BrandID),
+		CategoryID:       utils.IntToPInt32(input.CategoryID),
+		Description:      &input.Description,
+		ShortDescription: &input.ShortDescription,
+		Status:           &input.Status,
+		Thumbnail:        input.Thumbnail,
+		HasVariants:      &input.HasVariant,
+	})
+	if err != nil {
+		log.Printf("Error adding product: %v", err)
+		return sqlc.Product{}, utils.HandleDbError(err)
+	}
+
+	for _, imgUrl := range input.Images {
+		_, err = qTx.SaveAndUploadImg(ctx, sqlc.SaveAndUploadImgParams{
+			ProductID: product.ID,
+			ImageUrl:  imgUrl,
+		})
+		if err != nil {
+			return sqlc.Product{}, utils.HandleDbError(err)
+		}
+	}
+
+	// add spec product
+	for _, spec := range input.Specifications {
+		_, err = qTx.AddProductSpec(ctx, sqlc.AddProductSpecParams{
+			ProductID:    product.ID,
+			SpecKey:      spec.SpecKey,
+			SpecValue:    spec.SpecValue,
+			DisplayOrder: utils.IntToPInt32(spec.DisplayOrder),
+		})
+		if err != nil {
+			return sqlc.Product{}, utils.HandleDbError(err)
+		}
+	}
+
+	// add variant product
+	for _, v := range input.Variants {
+		attrBytes, err := json.Marshal(v.Attributes)
+		if err != nil {
+			return sqlc.Product{}, utils.WrapError(err, "Convert Attributes to JSON fail", http.StatusInternalServerError)
+		}
+
+		// Marshal images
+		imageJSON, err := json.Marshal([]string{input.Thumbnail})
+		if err != nil {
+			return sqlc.Product{}, utils.WrapError(err, "Convert Image to JSON fail", http.StatusInternalServerError)
+		}
+		SKUVariant := utils.GenSKU(input.Name, v.Attributes)
+		_, err = qTx.AddProductVariant(ctx, sqlc.AddProductVariantParams{
+			ProductID:     product.ID,
+			Sku:           &SKUVariant,
+			Attributes:    attrBytes,
+			Price:         utils.Float64ToPgTypeNumeric(v.Price),
+			StockQuantity: v.StockQuantity,
+			Images:        imageJSON,
+			IsActive:      &v.IsActive,
+		})
+		if err != nil {
+			log.Printf("Debug err:%v ", err)
+			return sqlc.Product{}, utils.HandleDbError(err)
+		}
+
+	}
+	// ✅ COMMIT TRANSACTION - QUAN TRỌNG!
+	if err = tx.Commit(ctx); err != nil {
+		return sqlc.Product{}, utils.WrapError(err, "Commit Transaction fail", http.StatusInternalServerError)
+	}
+
 	return product, nil
 }
 
-func (ps *productService) GetImagesBySlug(c *gin.Context, slug string) ([]string, error) {
-	ctx := c.Request.Context()
-	product, err := ps.repo.GetProductBySlug(ctx, slug)
+func (ps *productService) GetTop3Thumbnail(ctx context.Context) (dto.GetTop3TrendingRes, error) {
+
+	images, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(8))
 	if err != nil {
-		return nil, err
+		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
 	}
-	images, err := ps.iu.GetImagesByProductId(ctx, int32(product.ID))
+
+	laptops, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(1))
 	if err != nil {
-		return nil, err
+		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
 	}
-	return images, nil
+	keyboards, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(9))
+	if err != nil {
+		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
+	}
+	screens, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(10))
+	if err != nil {
+		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
+	}
+
+	mouses, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(7))
+	res := dto.GetTop3TrendingRes{
+		Images:    images,
+		Mouses:    mouses,
+		Laptops:   laptops,
+		Screens:   screens,
+		Keyboards: keyboards,
+	}
+	return res, nil
 }
 
-func (ps *productService) GetTop8ProductSeller(c *gin.Context, cateID *int32) ([]sqlc.GetTop8ProductSellerRow, error) {
-	ctx := c.Request.Context()
-	products, err := ps.repo.GetTop8ProductSeller(ctx, cateID)
-	if err != nil {
-		return nil, utils.WrapError(err, "Get Top 3 seller product fail", http.StatusBadRequest)
+func (ps *productService) GetProductBySlug(ctx context.Context, slug string) (sqlc.GetProductBySlugRow, error) {
+	return ps.repo.GetProductBySlug(ctx, slug)
+}
+
+func (ps *productService) GetListProducts(ctx context.Context, arg dto.GetProductsRequest) ([]sqlc.GetListProductsRow, error) {
+	offset := (arg.Page - 1) * arg.Limit
+	params := sqlc.GetListProductsParams{
+		Limit:      arg.Limit,
+		Offset:     offset,
+		SearchName: &arg.SearchName,
+		CateName:   &arg.CateName,
+		MaxPrice:   utils.Float64ToPgTypeNumeric(arg.MaxPrice),
+		MinPrice:   utils.Float64ToPgTypeNumeric(arg.MinPrice),
+		SortDesc:   arg.SortBy,
 	}
-	return products, nil
+
+	return ps.repo.GetListProducts(ctx, params)
 }

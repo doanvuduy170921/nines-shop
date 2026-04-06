@@ -138,7 +138,6 @@ func (js *JwtService) ValidateRefreshToken(tokenString string) (RefreshToken, er
 	if err != nil || refreshToken.Revoked == true || refreshToken.ExpiresAt.Before(time.Now()) {
 		return RefreshToken{}, err
 	}
-
 	return refreshToken, nil
 
 }

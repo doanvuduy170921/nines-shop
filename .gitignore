@@ -1,3 +1,36 @@
+# === App Secrets & Config ===
 .env
+*.env
+config.yaml
+# Không nên push các file chứa mật khẩu thực tế
+
+# === Golang ===
+# File thực thi sau khi build
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Thư mục vendor (nếu bạn không dùng go mod vendor)
+vendor/
+
+# === IDEs & Editors ===
 .idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# === Docker & OS ===
+# Các file log của database hoặc app phát sinh
+*.log
+# Dữ liệu local của Docker (nếu bạn map volume ra thư mục hiện tại)
+pgdata/
+redis_data/
+
+# === Project Specific ===
 uploads/
+# Nếu bạn có các file binary phục vụ tool automation (như chromedriver cho Selenium)
+chromedriver
+geckodriver

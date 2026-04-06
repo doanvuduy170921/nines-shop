@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/redis/go-redis/v9"
+	"log"
 	"time"
 )
 
@@ -53,13 +54,18 @@ func (r *redisCacheService) Exists(key string) (bool, error) {
 	return count > 0, nil
 }
 func (r *redisCacheService) Incr(key string, ttl time.Duration) (int64, error) {
-
 	val, err := r.rdb.Incr(r.ctx, key).Result()
 	if err != nil {
+		log.Printf("[Redis] Error Incr key %s: %v", key, err)
 		return 0, err
 	}
-	if val == int64(1) {
+
+	if val == 1 {
+		log.Printf("[Redis] New window started for key: %s (TTL: %v)", key, ttl)
 		r.rdb.Expire(r.ctx, key, ttl)
+	} else {
+		log.Printf("[Redis] Incrementing key: %s, Current Count: %d", key, val)
 	}
+
 	return val, nil
 }

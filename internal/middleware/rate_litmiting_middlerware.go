@@ -3,14 +3,14 @@ package middleware
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 
 	"nineshop-be/pkg/cache"
 	"time"
 )
 
-func RateLimitMiddleware(rdb cache.RedisCacheService, ttl time.Duration, limit int64) gin.HandlerFunc {
-
+func RateLimitMiddleware(rdb cache.RedisCacheService, limit int64, ttl time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var identifier string
 		if userUuid, exists := c.Get("user_uuid"); exists {
@@ -23,15 +23,20 @@ func RateLimitMiddleware(rdb cache.RedisCacheService, ttl time.Duration, limit i
 
 		count, err := rdb.Incr(key, ttl)
 		if err != nil {
+			log.Printf("[RateLimit] Redis error: %v, skipping check", err)
 			c.Next()
 			return
 		}
+
 		if count > limit {
-			c.AbortWithStatusJSON(http.StatusTooManyRequests,
-				gin.H{
-					"message": "Too Many Requests,Please try again after one minute."})
+			log.Printf("[RateLimit] BLOCKING %s - Request count: %d/%d", key, count, limit)
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error": "Too many requests. Please slow down.",
+			})
 			return
 		}
-		return
+
+		log.Printf("[RateLimit] ALLOWING %s - Request count: %d/%d", key, count, limit)
+		c.Next()
 	}
 }

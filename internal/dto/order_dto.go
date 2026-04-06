@@ -20,7 +20,7 @@ type CreatePendingOrderDto struct {
 }
 
 type OrderItemInput struct {
-	ProductId int     `json:"product_id" binding:"required"`
+	VariantID int     `json:"variant_id" binding:"required"`
 	Quantity  int     `json:"quantity" binding:"required,gt=0"`
 	Price     float64 `json:"price" binding:"required,gt=0"`
 }

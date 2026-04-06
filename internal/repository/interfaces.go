@@ -19,14 +19,24 @@ type UserRepository interface {
 }
 
 type ProductRepository interface {
-	CreateProduct(ctx context.Context, arg sqlc.CreateProductParams) (sqlc.Product, error)
-	GetAllProductByFilter(ctx context.Context, limit, page, categoryId, minPrice, maxPrice, brandId int32, search, status string) ([]sqlc.GetAllProductByFilterRow, error)
 	CountProduct(ctx context.Context, limit, page, categoryId, minPrice, maxPrice int32, search, status string) (int64, error)
 	GetProductById(ctx context.Context, id int32) (sqlc.Product, error)
 	UpdateThumbnail(ctx context.Context, thumbnail string, id int32) (sqlc.Product, error)
-	GetProductByCategoryId(ctx context.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error)
+
+	AddProduct(ctx context.Context, arg sqlc.AddProductParams) (sqlc.Product, error)
+	AddProductSpec(ctx context.Context, arg sqlc.AddProductSpecParams) (sqlc.ProductSpecification, error)
+	AddProductVariant(ctx context.Context, arg sqlc.AddProductVariantParams) (sqlc.ProductVariant, error)
+	AddAttributesConf(ctx context.Context, arg sqlc.AddAttributesConfParams) (sqlc.AttributeConfig, error)
+
+	GetAllProductByFilter(ctx context.Context) ([]sqlc.GetAllProductByFilterRow, error)
+	GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error)
+	GetTop3Thumbnail(ctx context.Context) ([]string, error)
+	GetTop3Trending(ctx context.Context, cateID *int32) ([]sqlc.GetTop3TrendingRow, error)
 	GetProductBySlug(ctx context.Context, slug string) (sqlc.GetProductBySlugRow, error)
-	GetTop8ProductSeller(ctx context.Context, cateID *int32) ([]sqlc.GetTop8ProductSellerRow, error)
+	GetVariantById(ctx context.Context, id int32) (sqlc.GetVariantByIdRow, error)
+	GetListProducts(ctx context.Context, arg sqlc.GetListProductsParams) ([]sqlc.GetListProductsRow, error)
+
+	CountGetListProducts(ctx context.Context, arg sqlc.CountGetListProductsParams) (int64, error)
 }
 
 type CategoryRepository interface {

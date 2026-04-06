@@ -1,5 +1,5 @@
 -- name: AddToCart :one
-insert into cart(user_id,product_id,quantity)
+insert into cart(user_id,variant_id,quantity)
 values ($1,$2,$3)
 returning *;
 
@@ -8,7 +8,7 @@ SELECT
     (EXISTS (
         SELECT 1
         FROM cart
-        WHERE product_id = @product_id::int
+        WHERE variant_id = @variant_id::int
             AND user_id = @user_id::int
     )) AS exists_;
 
@@ -16,30 +16,36 @@ SELECT
 update cart
 set quantity = quantity + @quantity::int
 where user_id = @user_id::int
-and product_id = @product_id::int
+and variant_id = @variant_id::int
 returning *;
 
 
 -- name: GetCartsByUserId :many
-select p.name,
-       p.id,
-       p.thumbnail,
-       p.price,
-       p.stock_quantity,
-       c.quantity
-from cart c
-left join products p on p.id = c.product_id
-where user_id = @user_id::int;
+SELECT
+    c.id AS cart_id,
+    c.quantity,
+    pv.id AS variant_id,
+    pv.price,
+    pv.sku,
+    pv.attributes,
+    p.id AS product_id,
+    p.name,
+    p.thumbnail
+FROM cart c
+         JOIN product_variants pv ON c.variant_id = pv.id
+         JOIN products p ON pv.product_id = p.id
+WHERE c.user_id = @user_id::int
+ORDER BY c.created_at DESC;
 
 -- name: DeleteItemInCart :exec
 DELETE FROM cart
 WHERE user_id = @user_id::int
-  AND product_id = @product_id::int;
+  AND variant_id = @variant_id::int;
 
 
 -- name: UpdateAllCart :one
 update cart
 set quantity = @quantity::int
 where user_id = @user_id::int
-and product_id = @product_id::int
+and variant_id = @variant_id::int
 returning *;

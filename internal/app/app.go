@@ -1,17 +1,20 @@
 package app
 
 import (
+	"sync"
+
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"github.com/redis/go-redis/v9"
 	"nineshop-be/internal/config"
-	"nineshop-be/internal/db"
+	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/repository"
 	"nineshop-be/internal/routes"
 	"nineshop-be/internal/service"
 	"nineshop-be/internal/validation"
+	"nineshop-be/pkg/auth"
 	"nineshop-be/pkg/cache"
 	"nineshop-be/pkg/email"
 )
@@ -27,19 +30,26 @@ type Application struct {
 	email  email.EmailService
 }
 
-func NewApplication(cfg *config.Config) *Application {
+var registerValidatorOnce sync.Once
+
+func NewApplication(cfg *config.Config, dbQueries *sqlc.Queries) *Application {
 	r := gin.Default()
+	r.Static("/uploads", "./uploads")
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	redisClient := config.NewRedisConfig()
 	redisCacheService := cache.NewRedisCacheService(redisClient)
 
 	emailConfig := config.NewEmailConfig()
 	emailService := email.NewGmailService(*emailConfig)
-	userService := service.NewUserService(repository.NewUserRepository(db.DB), redisClient, emailService)
+	userRepo := repository.NewUserRepository(dbQueries)
+	userService := service.NewUserService(userRepo, redisClient, emailService)
+
+	tokenService := auth.NewJwtService(redisCacheService)
+	authService := service.NewAuthService(userRepo, tokenService, redisCacheService)
 
 	module := []Module{
-		NewUserModule(redisClient, emailService),
-		NewAuthModule(redisCacheService, userService),
+		NewUserModule(userService),
+		NewAuthModule(authService, userService),
 		NewProductModule(),
 		NewCategoryModule(),
 		NewBrandModule(),
@@ -49,12 +59,14 @@ func NewApplication(cfg *config.Config) *Application {
 		NewPaymentModule(),
 		NewOrderItemModule(),
 		NewOrderModule(),
+		NewMediaModule(),
 	}
 
-	// init validator
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		validation.RegisterValidation(v) // <-- Đăng ký strong_pass, strong_user
-	}
+	registerValidatorOnce.Do(func() {
+		if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+			validation.RegisterValidation(v)
+		}
+	})
 
 	routes.RegisterRoute(redisCacheService, r, getRoutes(module)...)
 	return &Application{

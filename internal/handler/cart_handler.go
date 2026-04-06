@@ -40,7 +40,7 @@ func (ch *CartHandler) AddToCart(ctx *gin.Context) {
 	res := dto.CartRes{
 		ID:        cart.ID,
 		UserID:    cart.UserID,
-		ProductID: cart.ProductID,
+		VariantID: cart.VariantID,
 		Quantity:  cart.Quantity,
 	}
 	utils.ResponseSuccess(ctx, http.StatusOK, res, "Add To Cart Success")

@@ -1,5 +1,5 @@
 -- name: AddOrderItem :one
-insert into order_items(order_id,product_id,quantity,price,product_name,product_thumbnail)
+insert into order_items(order_id,variant_id,quantity,price,product_name,product_thumbnail)
 values ($1,$2,$3,$4,$5,$6)
 returning *;
 
@@ -18,7 +18,7 @@ SELECT
     o.created_at AS order_created_at,
 
     -- item info
-    oi.product_id,
+    oi.variant_id,
     oi.quantity,
     oi.price AS item_price,
     oi.product_name,

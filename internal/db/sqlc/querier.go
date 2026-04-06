@@ -7,13 +7,19 @@ package sqlc
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	ActiveUser(ctx context.Context, userUuid pgtype.UUID) error
+	AddAttributesConf(ctx context.Context, arg AddAttributesConfParams) (AttributeConfig, error)
 	AddOrderItem(ctx context.Context, arg AddOrderItemParams) (OrderItem, error)
+	AddProduct(ctx context.Context, arg AddProductParams) (Product, error)
+	AddProductSpec(ctx context.Context, arg AddProductSpecParams) (ProductSpecification, error)
+	AddProductVariant(ctx context.Context, arg AddProductVariantParams) (ProductVariant, error)
 	AddToCart(ctx context.Context, arg AddToCartParams) (Cart, error)
+	CountGetListProducts(ctx context.Context, arg CountGetListProductsParams) (int64, error)
 	CountProduct(ctx context.Context, arg CountProductParams) (int64, error)
 	CountUser(ctx context.Context, arg CountUserParams) (int64, error)
 	CreateCategory(ctx context.Context, name string) (Category, error)
@@ -21,8 +27,8 @@ type Querier interface {
 	CreateOrderStatusHistory(ctx context.Context, arg CreateOrderStatusHistoryParams) (OrderStatusHistory, error)
 	CreatePendingOrder(ctx context.Context, arg CreatePendingOrderParams) (PendingOrder, error)
 	CreatePendingOrderItem(ctx context.Context, arg CreatePendingOrderItemParams) (PendingOrderItem, error)
-	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DecreaseStock(ctx context.Context, arg DecreaseStockParams) (pgconn.CommandTag, error)
 	DeleteItemInCart(ctx context.Context, arg DeleteItemInCartParams) error
 	ExistsProductId(ctx context.Context, arg ExistsProductIdParams) (bool, error)
 	FindByEmail(ctx context.Context, email string) (User, error)
@@ -30,7 +36,7 @@ type Querier interface {
 	GetAllCategories(ctx context.Context) ([]Category, error)
 	GetAllOrders(ctx context.Context) ([]GetAllOrdersRow, error)
 	GetAllPayment(ctx context.Context) ([]PaymentMethod, error)
-	GetAllProductByFilter(ctx context.Context, arg GetAllProductByFilterParams) ([]GetAllProductByFilterRow, error)
+	GetAllProductByFilter(ctx context.Context) ([]GetAllProductByFilterRow, error)
 	GetAllStatusByOrderId(ctx context.Context, orderID int32) ([]GetAllStatusByOrderIdRow, error)
 	GetAllStatusByOrderIdV2(ctx context.Context, id int32) ([]GetAllStatusByOrderIdV2Row, error)
 	GetAllUser(ctx context.Context) ([]User, error)
@@ -42,14 +48,18 @@ type Querier interface {
 	GetCountItems(ctx context.Context, id int32) (int64, error)
 	GetImagesByProductId(ctx context.Context, id int32) ([]string, error)
 	GetListOrderByOrderId(ctx context.Context, arg GetListOrderByOrderIdParams) ([]GetListOrderByOrderIdRow, error)
+	GetListProducts(ctx context.Context, arg GetListProductsParams) ([]GetListProductsRow, error)
+	GetListVariantByPid(ctx context.Context, productID int64) ([]GetListVariantByPidRow, error)
 	GetOrderById(ctx context.Context, orderID int32) (Order, error)
 	GetOrderDetailById(ctx context.Context, id int32) ([]GetOrderDetailByIdRow, error)
 	GetOrderItemByUserId(ctx context.Context, id int32) ([]GetOrderItemByUserIdRow, error)
 	GetPOrderById(ctx context.Context, id int32) (PendingOrder, error)
-	GetProductByCategoryId(ctx context.Context, id int32) ([]GetProductByCategoryIdRow, error)
 	GetProductById(ctx context.Context, id int32) (Product, error)
 	GetProductBySlug(ctx context.Context, slug string) (GetProductBySlugRow, error)
-	GetTop8ProductSeller(ctx context.Context, cateID *int32) ([]GetTop8ProductSellerRow, error)
+	GetTop3Thumbnail(ctx context.Context) ([]string, error)
+	GetTop3Trending(ctx context.Context, cateID *int32) ([]GetTop3TrendingRow, error)
+	GetVariantById(ctx context.Context, id int32) (GetVariantByIdRow, error)
+	GetVariantForUpdate(ctx context.Context, id int32) (GetVariantForUpdateRow, error)
 	SaveAndUploadImg(ctx context.Context, arg SaveAndUploadImgParams) (ProductImage, error)
 	SoftDeleteUser(ctx context.Context, userUuid pgtype.UUID) (User, error)
 	UpdateAllCart(ctx context.Context, arg UpdateAllCartParams) (Cart, error)

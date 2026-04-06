@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"nineshop-be/internal/db/sqlc"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store struct {
@@ -18,7 +19,8 @@ func NewStore(pool *pgxpool.Pool) *Store {
 		Queries: sqlc.New(pool),
 	}
 }
-func (store *Store) execTx(ctx context.Context, fn func(*sqlc.Queries) error) error {
+
+func (store *Store) ExecTx(ctx context.Context, fn func(*sqlc.Queries) error) error {
 	tx, err := store.pool.Begin(ctx)
 	if err != nil {
 		return err

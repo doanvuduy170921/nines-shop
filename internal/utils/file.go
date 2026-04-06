@@ -7,8 +7,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -91,4 +93,10 @@ func saveFile(fileHeader *multipart.FileHeader, destination string) error {
 	_, err = io.Copy(out, src)
 
 	return err
+}
+
+func GenerateFileName(originalName string) string {
+	ext := path.Ext(originalName)
+	nameOnly := strings.TrimSuffix(originalName, ext)
+	return fmt.Sprintf("%s-%d%s", nameOnly, time.Now().UnixNano(), ext)
 }

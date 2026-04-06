@@ -3,8 +3,8 @@ package vnpay
 const (
 	Version     = "2.1.0"
 	Command     = "pay"
-	TmnCode     = "GBOII1TT"
-	HashSecret  = "VPNB9AASHI2HFM9GOVC0KECI9X5JUXEH"
+	TmnCode     = "PJZZ1SKG"
+	HashSecret  = "6KA6JHSAI6OL5OYLCTA6PCJN7ZX6JSY7"
 	PaymentURL  = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
 	Locale      = "vn"
 	CurrCode    = "VND"

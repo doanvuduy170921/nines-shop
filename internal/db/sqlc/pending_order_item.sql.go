@@ -12,14 +12,14 @@ import (
 )
 
 const createPendingOrderItem = `-- name: CreatePendingOrderItem :one
-insert into pending_order_items(pending_order_id,product_id,quantity,price)
+insert into pending_order_items(pending_order_id,variant_id,quantity,price)
 values ($1,$2,$3,$4)
-returning id, pending_order_id, product_id, quantity, price
+returning id, pending_order_id, variant_id, quantity, price
 `
 
 type CreatePendingOrderItemParams struct {
 	PendingOrderID int32          `json:"pending_order_id"`
-	ProductID      int32          `json:"product_id"`
+	VariantID      int32          `json:"variant_id"`
 	Quantity       int32          `json:"quantity"`
 	Price          pgtype.Numeric `json:"price"`
 }
@@ -27,7 +27,7 @@ type CreatePendingOrderItemParams struct {
 func (q *Queries) CreatePendingOrderItem(ctx context.Context, arg CreatePendingOrderItemParams) (PendingOrderItem, error) {
 	row := q.db.QueryRow(ctx, createPendingOrderItem,
 		arg.PendingOrderID,
-		arg.ProductID,
+		arg.VariantID,
 		arg.Quantity,
 		arg.Price,
 	)
@@ -35,7 +35,7 @@ func (q *Queries) CreatePendingOrderItem(ctx context.Context, arg CreatePendingO
 	err := row.Scan(
 		&i.ID,
 		&i.PendingOrderID,
-		&i.ProductID,
+		&i.VariantID,
 		&i.Quantity,
 		&i.Price,
 	)
@@ -43,7 +43,7 @@ func (q *Queries) CreatePendingOrderItem(ctx context.Context, arg CreatePendingO
 }
 
 const getByPOrderItemId = `-- name: GetByPOrderItemId :many
-select id, pending_order_id, product_id, quantity, price
+select id, pending_order_id, variant_id, quantity, price
 from pending_order_items
 where pending_order_id = $1::int
 `
@@ -60,7 +60,7 @@ func (q *Queries) GetByPOrderItemId(ctx context.Context, id int32) ([]PendingOrd
 		if err := rows.Scan(
 			&i.ID,
 			&i.PendingOrderID,
-			&i.ProductID,
+			&i.VariantID,
 			&i.Quantity,
 			&i.Price,
 		); err != nil {

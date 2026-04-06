@@ -7,11 +7,9 @@ import (
 	"github.com/joho/godotenv"
 	_ "golang.org/x/text/unicode/norm"
 	"log"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func GetEnv(key, defaultVal string) string {
@@ -74,16 +72,31 @@ func GenProductSlug(name string) string {
 	return slug.Make(name)
 }
 
-func GenProductSku(name string) string {
-	if name == "" {
-		return ""
+// GenSKU tạo mã kho dựa trên tên và thuộc tính
+// Ví dụ: Name: Apple, Attrs: {Color: Red, Size: XL} -> APPLE-RED-XL
+func GenSKU(name string, attrs map[string]interface{}) string {
+	parts := []string{strings.ToUpper(name[:3])} // Lấy 3 chữ đầu tên SP
+
+	for _, v := range attrs {
+		val := fmt.Sprintf("%v", v)
+		if len(val) > 0 {
+			parts = append(parts, strings.ToUpper(val))
+		}
 	}
-	nomalized := slug.MakeLang(name, "en")
+	return strings.Join(parts, "-")
+}
 
-	prefix := strings.ToUpper(strings.ReplaceAll(nomalized, " ", ""))
+func Float64ToNumeric(val float64) pgtype.Numeric {
+	var n pgtype.Numeric
+	// Format float64 thành string với đúng 2 chữ số thập phân.
+	// Điều này biến 1.68872005e+08 thành "168872005.00"
+	str := fmt.Sprintf("%.2f", val)
 
-	dateAt := time.Now().Format("060201")
-	randPart := rand.Intn(9999)
-
-	return fmt.Sprintf("%s-%s-%04d", prefix, dateAt, randPart)
+	// Sử dụng Scan để nạp chuỗi đã format vào pgtype.Numeric
+	err := n.Scan(str)
+	if err != nil {
+		// Log lỗi nếu chuỗi không hợp lệ (trường hợp val là NaN hoặc Inf)
+		log.Printf("❌ Numeric Scan Error: %v", err)
+	}
+	return n
 }

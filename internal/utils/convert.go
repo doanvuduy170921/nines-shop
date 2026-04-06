@@ -43,3 +43,8 @@ func NumericToFloat64(n pgtype.Numeric) (float64, error) {
 
 	return v.Float64, nil
 }
+
+func IntToPInt32(val int) *int32 {
+	n := int32(val)
+	return &n
+}

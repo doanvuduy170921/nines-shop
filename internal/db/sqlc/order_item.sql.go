@@ -12,14 +12,14 @@ import (
 )
 
 const addOrderItem = `-- name: AddOrderItem :one
-insert into order_items(order_id,product_id,quantity,price,product_name,product_thumbnail)
+insert into order_items(order_id,variant_id,quantity,price,product_name,product_thumbnail)
 values ($1,$2,$3,$4,$5,$6)
-returning id, order_id, product_id, quantity, price, product_name, product_thumbnail, created_at
+returning id, order_id, variant_id, quantity, price, product_name, product_thumbnail, created_at
 `
 
 type AddOrderItemParams struct {
 	OrderID          int32          `json:"order_id"`
-	ProductID        int32          `json:"product_id"`
+	VariantID        int32          `json:"variant_id"`
 	Quantity         int32          `json:"quantity"`
 	Price            pgtype.Numeric `json:"price"`
 	ProductName      string         `json:"product_name"`
@@ -29,7 +29,7 @@ type AddOrderItemParams struct {
 func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (OrderItem, error) {
 	row := q.db.QueryRow(ctx, addOrderItem,
 		arg.OrderID,
-		arg.ProductID,
+		arg.VariantID,
 		arg.Quantity,
 		arg.Price,
 		arg.ProductName,
@@ -39,7 +39,7 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (Ord
 	err := row.Scan(
 		&i.ID,
 		&i.OrderID,
-		&i.ProductID,
+		&i.VariantID,
 		&i.Quantity,
 		&i.Price,
 		&i.ProductName,
@@ -78,7 +78,7 @@ SELECT
     o.created_at AS order_created_at,
 
     -- item info
-    oi.product_id,
+    oi.variant_id,
     oi.quantity,
     oi.price AS item_price,
     oi.product_name,
@@ -106,7 +106,7 @@ type GetOrderItemByUserIdRow struct {
 	TotalAmount       pgtype.Numeric   `json:"total_amount"`
 	Status            string           `json:"status"`
 	OrderCreatedAt    pgtype.Timestamp `json:"order_created_at"`
-	ProductID         int32            `json:"product_id"`
+	VariantID         int32            `json:"variant_id"`
 	Quantity          int32            `json:"quantity"`
 	ItemPrice         pgtype.Numeric   `json:"item_price"`
 	ProductName       string           `json:"product_name"`
@@ -135,7 +135,7 @@ func (q *Queries) GetOrderItemByUserId(ctx context.Context, id int32) ([]GetOrde
 			&i.TotalAmount,
 			&i.Status,
 			&i.OrderCreatedAt,
-			&i.ProductID,
+			&i.VariantID,
 			&i.Quantity,
 			&i.ItemPrice,
 			&i.ProductName,

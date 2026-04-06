@@ -19,10 +19,10 @@ INSERT INTO orders(
 )
 VALUES (
            $1, $2, $3, $4, $5, $6,
-           $7::NUMERIC(10,2),
-           $8::NUMERIC(10,2),
-           $9::NUMERIC(10,2),
-           $10::NUMERIC(10,2),
+           $7::NUMERIC(15,2),
+           $8::NUMERIC(15,2),
+           $9::NUMERIC(15,2),
+           $10::NUMERIC(15,2),
            $11,
            $12,
            $13,

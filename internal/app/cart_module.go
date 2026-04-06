@@ -15,7 +15,8 @@ type CartModule struct {
 func NewCartModule() *CartModule {
 	userRepo := repository.NewUserRepository(db.DB)
 	cartRepo := repository.NewCartRepository(db.DB)
-	cartService := service.NewCartService(cartRepo, userRepo)
+	productRepo := repository.NewProductRepository(db.DB)
+	cartService := service.NewCartService(cartRepo, userRepo, productRepo)
 	cartHandler := handler.NewCartHandler(cartService)
 	cartRoute := routes.NewCartRoute(cartHandler)
 	return &CartModule{

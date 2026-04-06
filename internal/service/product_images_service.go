@@ -19,6 +19,7 @@ type productImagesService struct {
 type ProductUpdater interface {
 	GetProductById(ctx context.Context, id int32) (sqlc.Product, error)
 	UpdateThumbnail(ctx context.Context, thumbnail string, id int32) (sqlc.Product, error)
+	GetVariantById(ctx context.Context, id int32) (sqlc.GetVariantByIdRow, error)
 }
 
 func NewProductImagesService(repo repository.ProductImagesRepository, pu ProductUpdater) ProductImagesService {

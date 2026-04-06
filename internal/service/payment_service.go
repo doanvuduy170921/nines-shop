@@ -13,7 +13,6 @@ import (
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/repository"
 	"nineshop-be/internal/utils"
-	"nineshop-be/pkg/vnpay"
 	"strconv"
 )
 
@@ -106,18 +105,18 @@ func (ps *paymentService) HandleVnPaySuccess(c *gin.Context, orderRef string, qu
 	}
 
 	for _, item := range items {
-		product, err := qTx.GetProductById(ctx, item.ProductID)
+		product, err := qTx.GetVariantById(ctx, item.VariantID)
 		if err != nil {
 			return err
 		}
 
 		_, err = qTx.AddOrderItem(ctx, sqlc.AddOrderItemParams{
 			OrderID:          order.ID,
-			ProductID:        item.ProductID,
+			VariantID:        item.VariantID,
 			Quantity:         item.Quantity,
 			Price:            item.Price,
-			ProductName:      product.Name,
-			ProductThumbnail: &product.Thumbnail,
+			ProductName:      product.ProductName,
+			ProductThumbnail: &product.ProductThumbnail,
 		})
 		if err != nil {
 			return err
@@ -158,12 +157,14 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 	}
 
 	// 5. Kiểm tra số tiền có khớp không
-	vnpayAmountXu := amount         // amount từ vnpay.VerifyAndParseIPN đã chia 100 rồi
-	vnpayAmountVND := vnpayAmountXu // Đây là VND
+	vnpayAmountVND := amount // Số tiền này đã là VND (sau khi chia 100 ở VerifyAndParseIPN)
 
+	// Lấy giá trị từ Database (pgtype.Numeric)
 	floatVal, _ := pOrder.TotalAmount.Float64Value()
-	expectedAmountUSD := floatVal.Float64
-	expectedAmountVND := int64(math.Round(expectedAmountUSD * vnpay.USD_TO_VND_RATE))
+	expectedAmountVNDFloat := floatVal.Float64
+
+	// KHÔNG NHÂN VỚI USD_TO_VND_RATE NỮA
+	expectedAmountVND := int64(math.Round(expectedAmountVNDFloat))
 
 	log.Printf("🔍 Amount check: VNPay=%d VND, Expected=%d VND", vnpayAmountVND, expectedAmountVND)
 
@@ -174,8 +175,6 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 			fmt.Sprintf("Amount mismatch: VNPay=%d VND, Expected=%d VND (diff=%d)",
 				vnpayAmountVND, expectedAmountVND, diff))
 	}
-
-	log.Printf("✅ Amount matched (diff=%d VNĐ)", diff)
 
 	// 6. Tạo order thật
 	paymentStatus := constant.PaymentStatusPaid
@@ -217,20 +216,44 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 		return sqlc.Order{}, utils.WrapError(err, "Get pending order items fail", http.StatusInternalServerError)
 	}
 
-	// 9. Copy từng item sang order_items
+	// 9. Copy từng item sang order_items VÀ TRỪ KHO
 	for _, item := range pOrderItems {
-		product, err := qTx.GetProductById(c, item.ProductID)
+		// A. Khóa Variant và kiểm tra tồn kho hiện tại (Pessimistic Lock)
+		// Query: GetVariantForUpdate
+		variant, err := qTx.GetVariantForUpdate(c, item.VariantID)
 		if err != nil {
-			return sqlc.Order{}, utils.WrapError(err, "Get product from pending order item fail", http.StatusBadRequest)
+			return sqlc.Order{}, utils.WrapError(err, fmt.Sprintf("Variant %d không tồn tại", item.VariantID), http.StatusBadRequest)
 		}
 
+		if !*variant.IsActive {
+			return sqlc.Order{}, utils.NewError(http.StatusBadRequest, fmt.Sprintf("Sản phẩm %s hiện đã ngừng kinh doanh", variant.ProductName))
+		}
+
+		// B. Thực hiện trừ kho (Atomic Update)
+		// Query: DecreaseStock (:execresult)
+		res, err := qTx.DecreaseStock(c, sqlc.DecreaseStockParams{
+			VariantID: item.VariantID,
+			Stock:     item.Quantity,
+		})
+		if err != nil {
+			return sqlc.Order{}, utils.WrapError(err, "Lỗi cập nhật kho hàng", http.StatusInternalServerError)
+		}
+
+		// C. Kiểm tra xem có trừ thành công không (Trường hợp kho không đủ)
+		rowsAffected := res.RowsAffected() // Đối với pgx/v5 sqlc, RowsAffected trả về trực tiếp số lượng
+		if rowsAffected == 0 {
+			return sqlc.Order{}, utils.NewError(http.StatusBadRequest,
+				fmt.Sprintf("Sản phẩm %s không đủ số lượng tồn kho (Còn lại: %d)", variant.ProductName, variant.StockQuantity))
+		}
+
+		// D. Sau khi trừ kho thành công, mới thêm vào bảng order_items
 		_, err = qTx.AddOrderItem(c, sqlc.AddOrderItemParams{
 			OrderID:          order.ID,
-			ProductID:        item.ProductID,
+			VariantID:        item.VariantID,
 			Quantity:         item.Quantity,
 			Price:            item.Price,
-			ProductName:      product.Name,
-			ProductThumbnail: &product.Thumbnail,
+			ProductName:      variant.ProductName,
+			ProductThumbnail: &variant.ProductThumbnail,
 		})
 		if err != nil {
 			return sqlc.Order{}, utils.WrapError(err, "Add order item fail", http.StatusInternalServerError)

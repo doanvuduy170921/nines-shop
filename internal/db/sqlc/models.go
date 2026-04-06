@@ -5,8 +5,18 @@
 package sqlc
 
 import (
+	"encoding/json"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AttributeConfig struct {
+	ID           int32   `json:"id"`
+	AttrName     string  `json:"attr_name"`
+	AttrValue    string  `json:"attr_value"`
+	DisplayLabel *string `json:"display_label"`
+	ColorCode    *string `json:"color_code"`
+}
 
 type Brand struct {
 	ID        int32            `json:"id"`
@@ -18,10 +28,10 @@ type Brand struct {
 type Cart struct {
 	ID        int64            `json:"id"`
 	UserID    int32            `json:"user_id"`
-	ProductID int32            `json:"product_id"`
 	Quantity  *int32           `json:"quantity"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	VariantID int32            `json:"variant_id"`
 }
 
 type Category struct {
@@ -55,7 +65,7 @@ type Order struct {
 type OrderItem struct {
 	ID               int32            `json:"id"`
 	OrderID          int32            `json:"order_id"`
-	ProductID        int32            `json:"product_id"`
+	VariantID        int32            `json:"variant_id"`
 	Quantity         int32            `json:"quantity"`
 	Price            pgtype.Numeric   `json:"price"`
 	ProductName      string           `json:"product_name"`
@@ -100,7 +110,7 @@ type PendingOrder struct {
 type PendingOrderItem struct {
 	ID             int32          `json:"id"`
 	PendingOrderID int32          `json:"pending_order_id"`
-	ProductID      int32          `json:"product_id"`
+	VariantID      int32          `json:"variant_id"`
 	Quantity       int32          `json:"quantity"`
 	Price          pgtype.Numeric `json:"price"`
 }
@@ -109,24 +119,41 @@ type Product struct {
 	ID               int64            `json:"id"`
 	Name             string           `json:"name"`
 	Slug             string           `json:"slug"`
-	Sku              string           `json:"sku"`
 	BrandID          *int32           `json:"brand_id"`
 	CategoryID       *int32           `json:"category_id"`
 	Description      *string          `json:"description"`
 	ShortDescription *string          `json:"short_description"`
-	Price            pgtype.Numeric   `json:"price"`
-	DiscountPrice    pgtype.Numeric   `json:"discount_price"`
-	StockQuantity    *int32           `json:"stock_quantity"`
 	Status           *string          `json:"status"`
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
 	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
 	Thumbnail        string           `json:"thumbnail"`
+	HasVariants      *bool            `json:"has_variants"`
 }
 
 type ProductImage struct {
 	ID        int32  `json:"id"`
 	ProductID int64  `json:"product_id"`
 	ImageUrl  string `json:"image_url"`
+}
+
+type ProductSpecification struct {
+	ID           int32  `json:"id"`
+	ProductID    int64  `json:"product_id"`
+	SpecKey      string `json:"spec_key"`
+	SpecValue    string `json:"spec_value"`
+	DisplayOrder *int32 `json:"display_order"`
+}
+
+type ProductVariant struct {
+	ID            int32            `json:"id"`
+	ProductID     int64            `json:"product_id"`
+	Sku           *string          `json:"sku"`
+	Attributes    json.RawMessage  `json:"attributes"`
+	Price         pgtype.Numeric   `json:"price"`
+	StockQuantity int32            `json:"stock_quantity"`
+	Images        []byte           `json:"images"`
+	IsActive      *bool            `json:"is_active"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
 }
 
 type User struct {

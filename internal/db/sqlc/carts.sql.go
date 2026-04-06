@@ -7,32 +7,33 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addToCart = `-- name: AddToCart :one
-insert into cart(user_id,product_id,quantity)
+insert into cart(user_id,variant_id,quantity)
 values ($1,$2,$3)
-returning id, user_id, product_id, quantity, created_at, updated_at
+returning id, user_id, quantity, created_at, updated_at, variant_id
 `
 
 type AddToCartParams struct {
 	UserID    int32  `json:"user_id"`
-	ProductID int32  `json:"product_id"`
+	VariantID int32  `json:"variant_id"`
 	Quantity  *int32 `json:"quantity"`
 }
 
 func (q *Queries) AddToCart(ctx context.Context, arg AddToCartParams) (Cart, error) {
-	row := q.db.QueryRow(ctx, addToCart, arg.UserID, arg.ProductID, arg.Quantity)
+	row := q.db.QueryRow(ctx, addToCart, arg.UserID, arg.VariantID, arg.Quantity)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.ProductID,
 		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.VariantID,
 	)
 	return i, err
 }
@@ -40,16 +41,16 @@ func (q *Queries) AddToCart(ctx context.Context, arg AddToCartParams) (Cart, err
 const deleteItemInCart = `-- name: DeleteItemInCart :exec
 DELETE FROM cart
 WHERE user_id = $1::int
-  AND product_id = $2::int
+  AND variant_id = $2::int
 `
 
 type DeleteItemInCartParams struct {
 	UserID    int32 `json:"user_id"`
-	ProductID int32 `json:"product_id"`
+	VariantID int32 `json:"variant_id"`
 }
 
 func (q *Queries) DeleteItemInCart(ctx context.Context, arg DeleteItemInCartParams) error {
-	_, err := q.db.Exec(ctx, deleteItemInCart, arg.UserID, arg.ProductID)
+	_, err := q.db.Exec(ctx, deleteItemInCart, arg.UserID, arg.VariantID)
 	return err
 }
 
@@ -58,42 +59,51 @@ SELECT
     (EXISTS (
         SELECT 1
         FROM cart
-        WHERE product_id = $1::int
+        WHERE variant_id = $1::int
             AND user_id = $2::int
     )) AS exists_
 `
 
 type ExistsProductIdParams struct {
-	ProductID int32 `json:"product_id"`
+	VariantID int32 `json:"variant_id"`
 	UserID    int32 `json:"user_id"`
 }
 
 func (q *Queries) ExistsProductId(ctx context.Context, arg ExistsProductIdParams) (bool, error) {
-	row := q.db.QueryRow(ctx, existsProductId, arg.ProductID, arg.UserID)
+	row := q.db.QueryRow(ctx, existsProductId, arg.VariantID, arg.UserID)
 	var exists_ bool
 	err := row.Scan(&exists_)
 	return exists_, err
 }
 
 const getCartsByUserId = `-- name: GetCartsByUserId :many
-select p.name,
-       p.id,
-       p.thumbnail,
-       p.price,
-       p.stock_quantity,
-       c.quantity
-from cart c
-left join products p on p.id = c.product_id
-where user_id = $1::int
+SELECT
+    c.id AS cart_id,
+    c.quantity,
+    pv.id AS variant_id,
+    pv.price,
+    pv.sku,
+    pv.attributes,
+    p.id AS product_id,
+    p.name,
+    p.thumbnail
+FROM cart c
+         JOIN product_variants pv ON c.variant_id = pv.id
+         JOIN products p ON pv.product_id = p.id
+WHERE c.user_id = $1::int
+ORDER BY c.created_at DESC
 `
 
 type GetCartsByUserIdRow struct {
-	Name          *string        `json:"name"`
-	ID            *int64         `json:"id"`
-	Thumbnail     *string        `json:"thumbnail"`
-	Price         pgtype.Numeric `json:"price"`
-	StockQuantity *int32         `json:"stock_quantity"`
-	Quantity      *int32         `json:"quantity"`
+	CartID     int64           `json:"cart_id"`
+	Quantity   *int32          `json:"quantity"`
+	VariantID  int32           `json:"variant_id"`
+	Price      pgtype.Numeric  `json:"price"`
+	Sku        *string         `json:"sku"`
+	Attributes json.RawMessage `json:"attributes"`
+	ProductID  int64           `json:"product_id"`
+	Name       string          `json:"name"`
+	Thumbnail  string          `json:"thumbnail"`
 }
 
 func (q *Queries) GetCartsByUserId(ctx context.Context, userID int32) ([]GetCartsByUserIdRow, error) {
@@ -106,12 +116,15 @@ func (q *Queries) GetCartsByUserId(ctx context.Context, userID int32) ([]GetCart
 	for rows.Next() {
 		var i GetCartsByUserIdRow
 		if err := rows.Scan(
-			&i.Name,
-			&i.ID,
-			&i.Thumbnail,
-			&i.Price,
-			&i.StockQuantity,
+			&i.CartID,
 			&i.Quantity,
+			&i.VariantID,
+			&i.Price,
+			&i.Sku,
+			&i.Attributes,
+			&i.ProductID,
+			&i.Name,
+			&i.Thumbnail,
 		); err != nil {
 			return nil, err
 		}
@@ -127,26 +140,26 @@ const updateAllCart = `-- name: UpdateAllCart :one
 update cart
 set quantity = $1::int
 where user_id = $2::int
-and product_id = $3::int
-returning id, user_id, product_id, quantity, created_at, updated_at
+and variant_id = $3::int
+returning id, user_id, quantity, created_at, updated_at, variant_id
 `
 
 type UpdateAllCartParams struct {
 	Quantity  int32 `json:"quantity"`
 	UserID    int32 `json:"user_id"`
-	ProductID int32 `json:"product_id"`
+	VariantID int32 `json:"variant_id"`
 }
 
 func (q *Queries) UpdateAllCart(ctx context.Context, arg UpdateAllCartParams) (Cart, error) {
-	row := q.db.QueryRow(ctx, updateAllCart, arg.Quantity, arg.UserID, arg.ProductID)
+	row := q.db.QueryRow(ctx, updateAllCart, arg.Quantity, arg.UserID, arg.VariantID)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.ProductID,
 		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.VariantID,
 	)
 	return i, err
 }
@@ -155,26 +168,26 @@ const updateCart = `-- name: UpdateCart :one
 update cart
 set quantity = quantity + $1::int
 where user_id = $2::int
-and product_id = $3::int
-returning id, user_id, product_id, quantity, created_at, updated_at
+and variant_id = $3::int
+returning id, user_id, quantity, created_at, updated_at, variant_id
 `
 
 type UpdateCartParams struct {
 	Quantity  int32 `json:"quantity"`
 	UserID    int32 `json:"user_id"`
-	ProductID int32 `json:"product_id"`
+	VariantID int32 `json:"variant_id"`
 }
 
 func (q *Queries) UpdateCart(ctx context.Context, arg UpdateCartParams) (Cart, error) {
-	row := q.db.QueryRow(ctx, updateCart, arg.Quantity, arg.UserID, arg.ProductID)
+	row := q.db.QueryRow(ctx, updateCart, arg.Quantity, arg.UserID, arg.VariantID)
 	var i Cart
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.ProductID,
 		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.VariantID,
 	)
 	return i, err
 }

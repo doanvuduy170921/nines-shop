@@ -12,15 +12,20 @@ import (
 )
 
 const createPendingOrder = `-- name: CreatePendingOrder :one
-INSERT INTO pending_orders(user_id,name,email,phone,payment_method_id,address,otp,otp_expires_at,subtotal,total_amount,shipping_price,tax,status,amount_item)
-VALUES ($1,$2,$3,$4,$5,$6,$7,
-           $8,
-           $9::NUMERIC(10,2),
-           $10::NUMERIC(10,2),
-           $11::NUMERIC(10,2),
-           $12::NUMERIC(10,2),
+INSERT INTO pending_orders(
+    user_id, name, email, phone, payment_method_id, address,
+    otp, otp_expires_at, subtotal, total_amount, shipping_price,
+    tax, status, amount_item
+)
+VALUES (
+           $1, $2, $3, $4, $5, $6,
+           $7, $8,
+           $9::NUMERIC(15,2),
+           $10::NUMERIC(15,2),
+           $11::NUMERIC(15,2),
+           $12::NUMERIC(15,2),
            $13,
-            $14
+           $14
        )
     RETURNING id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item
 `

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
+	"mime/multipart"
 	"net/url"
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/dto"
@@ -26,12 +27,12 @@ type AuthService interface {
 }
 
 type ProductService interface {
-	CreateProduct(ctx *gin.Context, arg dto.CreateProductParamDto) (sqlc.Product, error)
-	GetAllByFilter(ctx *gin.Context, limit, page, categoryId, minPrice, maxPrice, brandId int32, search, status string) ([]sqlc.GetAllProductByFilterRow, int64, error)
-	GetProductByCategoryId(ctx *gin.Context, id int32) ([]sqlc.GetProductByCategoryIdRow, error)
-	GetProductBySlug(ctx *gin.Context, slug string) (sqlc.GetProductBySlugRow, error)
-	GetImagesBySlug(c *gin.Context, slug string) ([]string, error)
-	GetTop8ProductSeller(ctx *gin.Context, cateID *int32) ([]sqlc.GetTop8ProductSellerRow, error)
+	GetAllProductByFilter(ctx context.Context) ([]sqlc.GetAllProductByFilterRow, error)
+	AddProduct(c context.Context, input dto.AddProductRequestDto) (sqlc.Product, error)
+	GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error)
+	GetTop3Thumbnail(ctx context.Context) (dto.GetTop3TrendingRes, error)
+	GetProductBySlug(ctx context.Context, slug string) (sqlc.GetProductBySlugRow, error)
+	GetListProducts(ctx context.Context, arg dto.GetProductsRequest) ([]sqlc.GetListProductsRow, error)
 }
 
 type CategoryService interface {
@@ -77,4 +78,8 @@ type OrderService interface {
 	GetAllStatusByOrderIdV2(c *gin.Context, orderID int32) ([]sqlc.GetAllStatusByOrderIdV2Row, error)
 	GetListOrdersDetailByUserId(c *gin.Context, search *int32, status *string, limit int32, page int32) ([]sqlc.GetListOrderByOrderIdRow, error)
 	ViewDetailForMyOrder(c *gin.Context, orderID int32) ([]sqlc.ViewDetailForMyOrderRow, error)
+}
+
+type MediaService interface {
+	UploadMultiple(files []*multipart.FileHeader) ([]string, []error)
 }

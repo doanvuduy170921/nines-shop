@@ -23,7 +23,7 @@ func NewAuthHandler(service service.AuthService, user service.UserService) *Auth
 
 func (au *AuthHandler) Login(c *gin.Context) {
 	var input dto.LoginParams
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBindJSON(&input); err != nil { // Đọc JSON từ request body và map vào struct input
 		utils.ResponseError(c, err)
 		return
 	}

@@ -56,6 +56,11 @@ func (ph *PaymentHandler) CallBackFromVnPay(ctx *gin.Context) {
 }
 
 func (ph *PaymentHandler) Redirect(ctx *gin.Context) {
+
+	// 👇 THÊM 2 DÒNG NÀY ĐỂ DEBUG
+	log.Printf("🔍 RAW URL: %s", ctx.Request.URL.RawQuery)
+	log.Printf("🔍 Parsed Query: %v", ctx.Request.URL.Query())
+
 	query := ctx.Request.URL.Query()
 
 	// 1. Verify và parse
@@ -75,7 +80,6 @@ func (ph *PaymentHandler) Redirect(ctx *gin.Context) {
 	order, err := ph.service.ProcessVNPayPayment(ctx, orderID, amount, transactionNo, bankCode)
 	if err != nil {
 		log.Printf("Create order error: %v", err)
-
 		// Nếu đã tạo rồi, vẫn cho qua
 		if strings.Contains(err.Error(), "already confirmed") {
 			ctx.Redirect(http.StatusFound, fmt.Sprintf("http://localhost:4200/payment-result?status=success&order_id=%d", orderID))

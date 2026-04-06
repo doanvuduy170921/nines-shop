@@ -54,7 +54,8 @@ func (us *userService) CreateUser(c *gin.Context, input *sqlc.CreateUserParams) 
 	input.Password = string(hashPassword)
 	user, err := us.repo.CreateUser(ctx, *input)
 	if err != nil {
-		return dto.CreateUserRes{}, utils.WrapError(err, "Fail to create user", utils.ErrorCodeInternalError)
+		log.Printf("Debug err : %s", err.Error())
+		return dto.CreateUserRes{}, utils.HandleDbError(err)
 	}
 	otp := utils.GenOTP()
 	key := cache.OTPCreate(input.Email)
