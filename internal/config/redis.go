@@ -2,41 +2,41 @@ package config
 
 import (
 	"context"
+	"crypto/tls"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"nineshop-be/internal/utils"
 	"time"
 )
 
-type RedisConfig struct {
-	Addr     string
-	Username string
-
-	Password string
-	DB       int
-}
-
 func NewRedisConfig() *redis.Client {
-	cfg := RedisConfig{
-		Addr:     utils.GetEnv("REDIS_HOST", "localhost:6379"),
-		Username: utils.GetEnv("REDIS_USER", ""),
-		Password: utils.GetEnv("REDIS_PASSWORD", ""),
-		DB:       0,
-	}
+	addr := utils.GetEnv("REDIS_HOST", "localhost:6379")
+	password := utils.GetEnv("REDIS_PASSWORD", "")
+	username := utils.GetEnv("REDIS_USER", "default")
+	env := utils.GetEnv("ENVIRONMENT", "development")
 
-	client := redis.NewClient(&redis.Options{
-		Addr:         cfg.Addr,
-		Username:     cfg.Username,
-		Password:     cfg.Password,
-		DB:           cfg.DB,
+	opt := &redis.Options{
+		Addr:         addr,
+		Username:     username,
+		Password:     password,
+		DB:           0,
 		PoolSize:     20,
 		MinIdleConns: 5,
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
-	})
+	}
+
+	// Upstash production cần TLS
+	if env == "production" {
+		opt.TLSConfig = &tls.Config{
+			InsecureSkipVerify: false,
+		}
+	}
+
+	client := redis.NewClient(opt)
 	if _, err := client.Ping(context.Background()).Result(); err != nil {
-		log.Fatal("⛔ Failed to connect to redis")
+		log.Fatal("⛔ Failed to connect to redis: ", err)
 	}
 	log.Println("✅ Connected to redis")
 	return client
