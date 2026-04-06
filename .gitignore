@@ -1,6 +1,7 @@
 # === App Secrets & Config ===
 .env
 *.env
+.env.production
 config.yaml
 # Không nên push các file chứa mật khẩu thực tế
 
