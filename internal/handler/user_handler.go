@@ -23,12 +23,6 @@ func NewUserHandler(service service.UserService) *UserHandler {
 }
 
 func (uh *UserHandler) GetAllUser(c *gin.Context) {
-	//page := c.DefaultQuery("page", "1")
-	//limit := c.DefaultQuery("limit", "10")
-	//
-	//pageNumber, _ := strconv.Atoi(page)
-	//limitNumber, _ := strconv.Atoi(limit)
-
 	users, err := uh.service.GetAllUser(c)
 	if err != nil {
 		utils.ResponseError(c, err)

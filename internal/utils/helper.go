@@ -45,7 +45,7 @@ func StringToInt32(paramStr string) int32 {
 func StringToFloat64(paramStr string) float64 {
 	str, err := strconv.Atoi(paramStr)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	return float64(str)
 }
