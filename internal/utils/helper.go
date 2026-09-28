@@ -23,7 +23,7 @@ func GetEnv(key, defaultVal string) string {
 func LoadEnv() {
 	env := os.Getenv("ENVIRONMENT")
 	if env == "production" {
-		return // production dùng env vars từ Render, không cần file .env
+		return
 	}
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -67,7 +67,6 @@ func PgTypeUuidToString(input pgtype.UUID) string {
 	return input.String()
 }
 
-// cài go get github.com/gosimple/slug
 func GenProductSlug(name string) string {
 	if name == "" {
 		return ""
@@ -75,8 +74,6 @@ func GenProductSlug(name string) string {
 	return slug.Make(name)
 }
 
-// GenSKU tạo mã kho dựa trên tên và thuộc tính
-// Ví dụ: Name: Apple, Attrs: {Color: Red, Size: XL} -> APPLE-RED-XL
 func GenSKU(name string, attrs map[string]interface{}) string {
 	parts := []string{strings.ToUpper(name[:3])} // Lấy 3 chữ đầu tên SP
 
@@ -91,11 +88,7 @@ func GenSKU(name string, attrs map[string]interface{}) string {
 
 func Float64ToNumeric(val float64) pgtype.Numeric {
 	var n pgtype.Numeric
-	// Format float64 thành string với đúng 2 chữ số thập phân.
-	// Điều này biến 1.68872005e+08 thành "168872005.00"
 	str := fmt.Sprintf("%.2f", val)
-
-	// Sử dụng Scan để nạp chuỗi đã format vào pgtype.Numeric
 	err := n.Scan(str)
 	if err != nil {
 		// Log lỗi nếu chuỗi không hợp lệ (trường hợp val là NaN hoặc Inf)

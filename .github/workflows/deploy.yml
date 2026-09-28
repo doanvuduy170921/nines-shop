@@ -37,12 +37,16 @@ jobs:
 
       - name: Generate production .env file securely from GitHub Secrets
         run: |
-          cd infra
-          cat << 'EOF' > .env
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          EOF
+            cd infra
+            cat << 'EOF' > .env
+            DB_HOST=postgres-db
+            DB_PORT=5432
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            REDIS_HOST=redis-server
+            REDIS_PORT=6379
+            EOF
 
       - name: Pull latest image and deploy via Docker Compose (Zero-Downtime update)
         run: |
