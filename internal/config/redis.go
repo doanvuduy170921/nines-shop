@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"nineshop-be/internal/utils"
@@ -10,7 +11,9 @@ import (
 )
 
 func NewRedisConfig() *redis.Client {
-	addr := utils.GetEnv("REDIS_HOST", "localhost:6379")
+	host := utils.GetEnv("REDIS_HOST", "localhost")
+	port := utils.GetEnv("REDIS_PORT", "6379")
+	addr := fmt.Sprintf("%s:%s", host, port)
 	password := utils.GetEnv("REDIS_PASSWORD", "")
 	username := utils.GetEnv("REDIS_USER", "default")
 	env := utils.GetEnv("ENVIRONMENT", "development")
