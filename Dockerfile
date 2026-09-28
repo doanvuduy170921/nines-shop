@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 # Change "." if main.go is in a sub folder (e.g. ./cmd/server).
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/server .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/api
 
 # ---- runtime stage ----
 FROM alpine:3.22
