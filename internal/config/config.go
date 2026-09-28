@@ -24,7 +24,7 @@ func NewConfig() *Config {
 		db: DatabaseConfig{
 			DbName:   utils.GetEnv("DB_NAME", "nineshop-be"),
 			Host:     utils.GetEnv("DB_HOST", "localhost"),
-			Port:     utils.GetEnv("DB_PORT", "5433"),
+			Port:     utils.GetEnv("DB_PORT", "5432"),
 			User:     utils.GetEnv("DB_USER", "root"),
 			Password: utils.GetEnv("DB_PASSWORD", ""),
 			SSLMode:  utils.GetEnv("DB_SSL", "disable"),
