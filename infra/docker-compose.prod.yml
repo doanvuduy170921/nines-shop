@@ -46,8 +46,6 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: nineshop-rabbitmq
     restart: always
-    ports:
-      - "15672:15672"
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq
     networks:

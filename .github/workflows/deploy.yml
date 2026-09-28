@@ -1,61 +1,53 @@
-name: ci-cd
+name: CI/CD Enterprise Pipeline
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
-  packages: write
-
-# Cancel an older run of the same branch when a new commit arrives.
-concurrency:
-  group: ci-cd-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [ "main" ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - run: go build ./...
-      - run: go vet ./...
-      # Tests are skipped for now. Enable this later:
-      # - run: go test ./...
-
   docker:
-    needs: build
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # GHCR requires a lowercase image name.
-      - name: Set image name
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Must match the VPS architecture (run `uname -m` on the VPS:
-          # x86_64 => linux/amd64, aarch64 => linux/arm64).
-          platforms: linux/amd64
-          tags: |
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
-            ${{ env.IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ghcr.io/doanvuduy170921/nines-shop:latest
+
+  deploy:
+    needs: docker
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code on VPS runner
+        uses: actions/checkout@v4
+
+      - name: Generate production .env file securely from GitHub Secrets
+        run: |
+          cd infra
+          cat << 'EOF' > .env
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          EOF
+
+      - name: Pull latest image and deploy via Docker Compose (Zero-Downtime update)
+        run: |
+          cd infra
+          
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          
+          docker image prune -f
