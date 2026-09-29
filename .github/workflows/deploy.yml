@@ -26,35 +26,42 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/doanvuduy170921/nines-shop:latest
+          tags: |
+            ghcr.io/doanvuduy170921/nines-shop:latest
+            ghcr.io/doanvuduy170921/nines-shop:sha-${{ github.sha }}
 
   deploy:
     needs: docker
     runs-on: self-hosted
     steps:
-      - name: Checkout code on VPS runner
+      - name: Checkout infra repo
         uses: actions/checkout@v4
+        with:
+          repository: doanvuduy170921/nineshop-infra
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          path: infra
 
       - name: Generate production .env file securely from GitHub Secrets
         run: |
-            cd infra
-            cat << 'EOF' > .env
-            DB_HOST=postgres-db
-            DB_PORT=5432
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            REDIS_HOST=redis-server
-            REDIS_PORT=6379
-            EOF
+          cd "$GITHUB_WORKSPACE/infra"
+          cat << 'EOF' > .env
+          DB_HOST=postgres-db
+          DB_PORT=5432
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          REDIS_HOST=redis-server
+          REDIS_PORT=6379
+          EOF
+          chmod 600 .env
 
-      - name: Pull latest image and deploy via Docker Compose (Zero-Downtime update)
+      - name: Pull latest image and deploy via Docker Compose (backend only)
         run: |
-          cd infra
-          
+          cd "$GITHUB_WORKSPACE/infra"
+
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          
-          docker compose -f docker-compose.prod.yml pull
-          docker compose -f docker-compose.prod.yml up -d --remove-orphans
-          
+
+          docker compose -f docker-compose.prod.yml pull app
+          docker compose -f docker-compose.prod.yml up -d --no-deps app
+
           docker image prune -f
