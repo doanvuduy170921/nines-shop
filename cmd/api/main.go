@@ -18,7 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	app.RunMigrations(cfg.DNS())
+	app.RunMigrations(cfg.URLDNS())
 
 	application := app.NewApplication(cfg, db.DB)
 

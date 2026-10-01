@@ -36,3 +36,9 @@ func NewConfig() *Config {
 func (c *Config) DNS() string {
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", c.db.Host, c.db.Port, c.db.User, c.db.Password, c.db.DbName, c.db.SSLMode)
 }
+
+func (c *Config) URLDNS() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		c.db.User, c.db.Password, c.db.Host, c.db.Port, c.db.DbName, c.db.SSLMode,
+	)
+}
