@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"nineshop-be/internal/config"
