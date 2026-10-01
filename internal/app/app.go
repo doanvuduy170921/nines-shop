@@ -1,13 +1,15 @@
 package app
 
 import (
-	"sync"
-
+	"errors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/redis/go-redis/v9"
+	"log"
 	"nineshop-be/internal/config"
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/repository"
@@ -17,6 +19,7 @@ import (
 	"nineshop-be/pkg/auth"
 	"nineshop-be/pkg/cache"
 	"nineshop-be/pkg/email"
+	"sync"
 )
 
 type Module interface {
@@ -87,4 +90,19 @@ func getRoutes(modules []Module) []routes.Route {
 		routerList[i] = m.Route()
 	}
 	return routerList
+}
+func RunMigrations(dbURL string) {
+
+	log.Println("🔄 Running database migrations...")
+
+	m, err := migrate.New("file://internal/db/migrations", dbURL)
+	if err != nil {
+		log.Fatalf("Failed to create migrate instance: %v", err)
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	log.Println("✅ Database migrations applied successfully!")
 }

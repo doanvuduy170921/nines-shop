@@ -18,6 +18,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	app.RunMigrations(cfg.DNS())
+
 	application := app.NewApplication(cfg, db.DB)
 
 	if err := application.Run(); err != nil {
