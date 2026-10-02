@@ -52,6 +52,11 @@ jobs:
           DB_NAME=${{ secrets.DB_NAME }}
           REDIS_HOST=redis-server
           REDIS_PORT=6379
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_SENDER=${{ secrets.SMTP_SENDER }}
           EOF
           chmod 600 .env
 

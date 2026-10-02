@@ -32,12 +32,11 @@ type mailPayload struct {
 }
 
 func NewUserService(repo repository.UserRepository, redisClient *redis.Client, mail email.EmailService) UserService {
-	// 1. Khởi tạo instance của userService trước
 	us := &userService{
 		repo:      repo,
 		redis:     cache.NewRedisCacheService(redisClient),
 		mail:      mail,
-		mailQueue: make(chan mailPayload, 100), // Đảm bảo channel đã được tạo
+		mailQueue: make(chan mailPayload, 100),
 	}
 
 	// 2. Chạy worker từ instance 'us' vừa tạo
