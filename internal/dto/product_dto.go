@@ -57,7 +57,6 @@ func pgTypeNumericToFloat64(input pgtype.Numeric) float64 {
 
 func Float64ToPgTypeNumeric(input float64) pgtype.Numeric {
 	var num pgtype.Numeric
-	// chuyển float64 sang string để Scan hợp lệ
 	strValue := fmt.Sprintf("%f", input)
 
 	err := num.Scan(strValue)
@@ -108,5 +107,5 @@ type GetProductsRequest struct {
 	SearchName string  `form:"search"`
 	MinPrice   float64 `form:"min_price"`
 	MaxPrice   float64 `form:"max_price"`
-	SortBy     bool    `form:"sort_by"` // Ví dụ: price, created_at
+	SortBy     bool    `form:"sort_by"`
 }

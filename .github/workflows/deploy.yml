@@ -57,6 +57,7 @@ jobs:
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           FROM_NAME=${{ secrets.FROM_NAME }}
+          PUBLIC_URL=${{ secrets.PUBLIC_URL }}
           EOF
           chmod 600 .env
 

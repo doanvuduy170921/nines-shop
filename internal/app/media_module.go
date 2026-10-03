@@ -4,6 +4,7 @@ import (
 	"nineshop-be/internal/handler"
 	"nineshop-be/internal/routes"
 	"nineshop-be/internal/service"
+	"os"
 )
 
 type MediaModule struct {
@@ -11,7 +12,12 @@ type MediaModule struct {
 }
 
 func NewMediaModule() *MediaModule {
-	mediaService := service.NewMediaService("./uploads", "http://localhost:8080/uploads/")
+	publicURL := os.Getenv("PUBLIC_URL")
+	if publicURL == "" {
+		publicURL = "http://localhost:8080/uploads/"
+	}
+
+	mediaService := service.NewMediaService("./uploads", publicURL)
 	mediaHandler := handler.NewMediaHandler(mediaService)
 	mediaRoute := routes.NewMediaRoutes(mediaHandler)
 	return &MediaModule{

@@ -7,7 +7,7 @@ import (
 
 type mediaService struct {
 	uploadDir string
-	publicURL string // Ví dụ: http://localhost:8080/uploads/
+	publicURL string
 }
 
 func NewMediaService(uploadDir, publicURL string) MediaService {
@@ -19,7 +19,6 @@ func (s *mediaService) UploadMultiple(files []*multipart.FileHeader) ([]string, 
 	var errs []error
 
 	for _, file := range files {
-		// Dùng hàm ValidateAndSaveFile bạn đã viết rất tốt trước đó
 		filename, err := utils.ValidateAndSaveFile(file, s.uploadDir)
 		if err != nil {
 			errs = append(errs, err)
