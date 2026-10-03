@@ -47,8 +47,9 @@ func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
 			maxPrice = &val
 		}
 	}
-
-	listProducts, err := ph.service.GetAllProductByFilter(ctx.Request.Context(), search, categoryID, brandID, minPrice, maxPrice)
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "15"))
+	listProducts, err := ph.service.GetAllProductByFilter(ctx.Request.Context(), search, categoryID, brandID, minPrice, maxPrice, page, limit)
 	if err != nil {
 		utils.ResponseError(ctx, err)
 		return
