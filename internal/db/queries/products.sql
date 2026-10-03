@@ -93,8 +93,7 @@ where product_id =sqlc.arg(product_id);
 select  products.thumbnail
 from products
 where category_id =8
-    limit 3
-offset 3;
+    limit 3;
 
 
 -- name: GetTop3Trending :many
