@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"log"
+	"math"
 	"net/http"
 	"nineshop-be/internal/db"
 	"nineshop-be/internal/db/sqlc"
@@ -32,7 +33,15 @@ func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) Prod
 
 }
 
-func (ps *productService) GetAllProductByFilter(ctx context.Context, search string, categoryID, brandID *int64, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error) {
+type ProductPaginationResponse struct {
+	Data      []sqlc.GetAllProductByFilterRow `json:"Data"`
+	Total     int64                           `json:"Total"`
+	TotalPage int                             `json:"TotalPage"`
+	Page      int                             `json:"Page"`
+}
+
+func (ps *productService) GetAllProductByFilter(ctx context.Context, search string, categoryID, brandID *int64, minPrice, maxPrice *float64, page, limit int) (ProductPaginationResponse, error) {
+	// 1. Lấy dữ liệu từ Repo như bình thường
 	var searchArg *string
 	if search != "" {
 		searchArg = &search
@@ -54,9 +63,37 @@ func (ps *productService) GetAllProductByFilter(ctx context.Context, search stri
 		MaxPrice:   maxPriceArg,
 	})
 	if err != nil {
-		return nil, utils.HandleDbError(err)
+		return ProductPaginationResponse{}, utils.HandleDbError(err)
 	}
-	return products, nil
+
+	// 2. Tính toán phân trang trên mảng kết quả
+	total := int64(len(products))
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
+	if totalPage == 0 {
+		totalPage = 1
+	}
+
+	start := (page - 1) * limit
+	end := start + limit
+	if start > int(total) {
+		start = int(total)
+	}
+	if end > int(total) {
+		end = int(total)
+	}
+
+	paginatedData := []sqlc.GetAllProductByFilterRow{}
+	if total > 0 && start < int(total) {
+		paginatedData = products[start:end]
+	}
+
+	// 3. Trả về đúng object có chứa trường Data, Total, TotalPage, Page
+	return ProductPaginationResponse{
+		Data:      paginatedData,
+		Total:     total,
+		TotalPage: totalPage,
+		Page:      page,
+	}, nil
 }
 
 func (ps *productService) GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error) {
