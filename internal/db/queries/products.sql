@@ -100,16 +100,17 @@ offset 3;
 -- name: GetTop3Trending :many
 SELECT p.name,
        p.thumbnail,
-       MIN(pv.price) AS min_price, -- Lấy giá thấp nhất trong các biến thể
+       MIN(pv.price) AS min_price,
        b.name AS brand_name,
        p.slug
 FROM products p
+         JOIN categories c ON c.id = p.category_id
          LEFT JOIN product_variants pv ON p.id = pv.product_id
          LEFT JOIN brand b ON b.id = p.brand_id
-WHERE p.category_id = sqlc.arg(cate_id)
-GROUP BY p.id, p.name, p.thumbnail, b.name
-    limit  4
-offset 2;
+WHERE c.name ILIKE sqlc.arg(cate_name)
+GROUP BY p.id, p.name, p.thumbnail, b.name, p.slug
+    LIMIT 4
+OFFSET 2;
 
 -- name: GetProductBySlug :one
 SELECT

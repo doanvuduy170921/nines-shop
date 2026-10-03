@@ -72,8 +72,8 @@ func (pr *productRepository) GetTop3Thumbnail(ctx context.Context) ([]string, er
 	return pr.DB.GetTop3Thumbnail(ctx)
 }
 
-func (pr *productRepository) GetTop3Trending(ctx context.Context, cateID *int32) ([]sqlc.GetTop3TrendingRow, error) {
-	return pr.DB.GetTop3Trending(ctx, cateID)
+func (pr *productRepository) GetTop3Trending(ctx context.Context, cateName string) ([]sqlc.GetTop3TrendingRow, error) {
+	return pr.DB.GetTop3Trending(ctx, cateName)
 }
 
 func (pr *productRepository) GetProductBySlug(ctx context.Context, slug string) (sqlc.GetProductBySlugRow, error) {

@@ -122,7 +122,6 @@ func (ps *productService) AddProduct(ctx context.Context, input dto.AddProductRe
 		}
 
 	}
-	// ✅ COMMIT TRANSACTION - QUAN TRỌNG!
 	if err = tx.Commit(ctx); err != nil {
 		return sqlc.Product{}, utils.WrapError(err, "Commit Transaction fail", http.StatusInternalServerError)
 	}
@@ -132,25 +131,25 @@ func (ps *productService) AddProduct(ctx context.Context, input dto.AddProductRe
 
 func (ps *productService) GetTop3Thumbnail(ctx context.Context) (dto.GetTop3TrendingRes, error) {
 
-	images, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(8))
+	images, err := ps.repo.GetTop3Trending(ctx, "Earphone")
 	if err != nil {
 		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
 	}
 
-	laptops, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(1))
+	laptops, err := ps.repo.GetTop3Trending(ctx, "Laptop")
 	if err != nil {
 		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
 	}
-	keyboards, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(9))
+	keyboards, err := ps.repo.GetTop3Trending(ctx, "Keyboard")
 	if err != nil {
 		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
 	}
-	screens, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(10))
+	screens, err := ps.repo.GetTop3Trending(ctx, "Screen")
 	if err != nil {
 		return dto.GetTop3TrendingRes{}, utils.HandleDbError(err)
 	}
 
-	mouses, err := ps.repo.GetTop3Trending(ctx, utils.IntToPInt32(7))
+	mouses, err := ps.repo.GetTop3Trending(ctx, "Mouse")
 	res := dto.GetTop3TrendingRes{
 		Images:    images,
 		Mouses:    mouses,
