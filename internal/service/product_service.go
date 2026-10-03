@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"log"
 	"net/http"
 	"nineshop-be/internal/db"
@@ -32,25 +33,24 @@ func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) Prod
 }
 
 func (ps *productService) GetAllProductByFilter(ctx context.Context, search, category, brand string, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error) {
-
-	var searchArg, cateArg, brandArg sql.NullString
+	var searchArg, cateArg, brandArg *string
 
 	if search != "" {
-		searchArg = sql.NullString{String: search, Valid: true}
+		searchArg = &search
 	}
 	if category != "" {
-		cateArg = sql.NullString{String: category, Valid: true}
+		cateArg = &category
 	}
 	if brand != "" {
-		brandArg = sql.NullString{String: brand, Valid: true}
+		brandArg = &brand
 	}
 
-	var minPriceArg, maxPriceArg sql.NullFloat64
+	var minPriceArg, maxPriceArg pgtype.Numeric
 	if minPrice != nil {
-		minPriceArg = sql.NullFloat64{Float64: *minPrice, Valid: true}
+		minPriceArg.Scan(fmt.Sprintf("%f", *minPrice))
 	}
 	if maxPrice != nil {
-		maxPriceArg = sql.NullFloat64{Float64: *maxPrice, Valid: true}
+		maxPriceArg.Scan(fmt.Sprintf("%f", *maxPrice))
 	}
 
 	products, err := ps.repo.GetAllProductByFilter(ctx, sqlc.GetAllProductByFilterParams{
