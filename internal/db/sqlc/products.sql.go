@@ -171,7 +171,7 @@ FROM (
            AND (c.name ILIKE '%' || $2 || '%' OR $2 = '')
            AND (b.name ILIKE '%' || $3 || '%' OR $3 = '')
          GROUP BY
-             p.id 
+             p.id
          HAVING
              MIN(pv.price) >= $4
             AND MIN(pv.price) <= $5
@@ -279,8 +279,21 @@ FROM products p
          JOIN categories c ON c.id = p.category_id
          JOIN brand b ON b.id = p.brand_id
          LEFT JOIN product_variants pv ON pv.product_id = p.id
+WHERE (p.name ILIKE '%' || $1::text || '%' OR $1 IS NULL)
+  AND (c.name ILIKE '%' || $2::text || '%' OR $2 IS NULL)
+  AND (b.name ILIKE '%' || $3::text || '%' OR $3 IS NULL)
 GROUP BY p.id, c.name, b.name
+HAVING (MIN(pv.price) >= $4::numeric OR $4 IS NULL)
+   AND (MIN(pv.price) <= $5::numeric OR $5 IS NULL)
 `
+
+type GetAllProductByFilterParams struct {
+	SearchName *string        `json:"search_name"`
+	CateName   *string        `json:"cate_name"`
+	BrandName  *string        `json:"brand_name"`
+	MinPrice   pgtype.Numeric `json:"min_price"`
+	MaxPrice   pgtype.Numeric `json:"max_price"`
+}
 
 type GetAllProductByFilterRow struct {
 	ID           int64            `json:"id"`
@@ -296,8 +309,14 @@ type GetAllProductByFilterRow struct {
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
-func (q *Queries) GetAllProductByFilter(ctx context.Context) ([]GetAllProductByFilterRow, error) {
-	rows, err := q.db.Query(ctx, getAllProductByFilter)
+func (q *Queries) GetAllProductByFilter(ctx context.Context, arg GetAllProductByFilterParams) ([]GetAllProductByFilterRow, error) {
+	rows, err := q.db.Query(ctx, getAllProductByFilter,
+		arg.SearchName,
+		arg.CateName,
+		arg.BrandName,
+		arg.MinPrice,
+		arg.MaxPrice,
+	)
 	if err != nil {
 		return nil, err
 	}

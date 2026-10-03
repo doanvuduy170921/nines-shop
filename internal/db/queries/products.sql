@@ -37,7 +37,12 @@ FROM products p
          JOIN categories c ON c.id = p.category_id
          JOIN brand b ON b.id = p.brand_id
          LEFT JOIN product_variants pv ON pv.product_id = p.id
-GROUP BY p.id, c.name, b.name;
+WHERE (p.name ILIKE '%' || sqlc.narg(search_name)::text || '%' OR sqlc.narg(search_name) IS NULL)
+  AND (c.name ILIKE '%' || sqlc.narg(cate_name)::text || '%' OR sqlc.narg(cate_name) IS NULL)
+  AND (b.name ILIKE '%' || sqlc.narg(brand_name)::text || '%' OR sqlc.narg(brand_name) IS NULL)
+GROUP BY p.id, c.name, b.name
+HAVING (MIN(pv.price) >= sqlc.narg(min_price)::numeric OR sqlc.narg(min_price) IS NULL)
+   AND (MIN(pv.price) <= sqlc.narg(max_price)::numeric OR sqlc.narg(max_price) IS NULL);
 
 
 -- name: CountProduct :one
@@ -215,7 +220,7 @@ FROM (
            AND (c.name ILIKE '%' || sqlc.arg(cate_name) || '%' OR sqlc.arg(cate_name) = '')
            AND (b.name ILIKE '%' || sqlc.arg(brand_name) || '%' OR sqlc.arg(brand_name) = '')
          GROUP BY
-             p.id 
+             p.id
          HAVING
              MIN(pv.price) >= sqlc.arg(min_price)
             AND MIN(pv.price) <= sqlc.arg(max_price)

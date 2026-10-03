@@ -36,7 +36,7 @@ type Querier interface {
 	GetAllCategories(ctx context.Context) ([]Category, error)
 	GetAllOrders(ctx context.Context) ([]GetAllOrdersRow, error)
 	GetAllPayment(ctx context.Context) ([]PaymentMethod, error)
-	GetAllProductByFilter(ctx context.Context) ([]GetAllProductByFilterRow, error)
+	GetAllProductByFilter(ctx context.Context, arg GetAllProductByFilterParams) ([]GetAllProductByFilterRow, error)
 	GetAllStatusByOrderId(ctx context.Context, orderID int32) ([]GetAllStatusByOrderIdRow, error)
 	GetAllStatusByOrderIdV2(ctx context.Context, id int32) ([]GetAllStatusByOrderIdV2Row, error)
 	GetAllUser(ctx context.Context) ([]User, error)

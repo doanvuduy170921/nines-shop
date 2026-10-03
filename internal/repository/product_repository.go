@@ -60,10 +60,9 @@ func (pr *productRepository) AddAttributesConf(ctx context.Context, arg sqlc.Add
 	return pr.DB.AddAttributesConf(ctx, arg)
 }
 
-func (pr *productRepository) GetAllProductByFilter(ctx context.Context) ([]sqlc.GetAllProductByFilterRow, error) {
-	return pr.DB.GetAllProductByFilter(ctx)
+func (pr *productRepository) GetAllProductByFilter(ctx context.Context, arg sqlc.GetAllProductByFilterParams) ([]sqlc.GetAllProductByFilterRow, error) {
+	return pr.DB.GetAllProductByFilter(ctx, arg)
 }
-
 func (pr *productRepository) GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error) {
 	return pr.DB.GetListVariantByPid(ctx, productID)
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"github.com/jackc/pgx/v5"
 	"log"
@@ -30,8 +31,35 @@ func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) Prod
 
 }
 
-func (ps *productService) GetAllProductByFilter(ctx context.Context) ([]sqlc.GetAllProductByFilterRow, error) {
-	products, err := ps.repo.GetAllProductByFilter(ctx)
+func (ps *productService) GetAllProductByFilter(ctx context.Context, search, category, brand string, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error) {
+	// Chuyển đổi sang kiểu dữ liệu phù hợp với sqlc.narg (ví: sql.NullString hoặc con trỏ)
+	var searchArg, cateArg, brandArg sql.NullString
+
+	if search != "" {
+		searchArg = sql.NullString{String: search, Valid: true}
+	}
+	if category != "" {
+		cateArg = sql.NullString{String: category, Valid: true}
+	}
+	if brand != "" {
+		brandArg = sql.NullString{String: brand, Valid: true}
+	}
+
+	var minPriceArg, maxPriceArg sql.NullFloat64
+	if minPrice != nil {
+		minPriceArg = sql.NullFloat64{Float64: *minPrice, Valid: true}
+	}
+	if maxPrice != nil {
+		maxPriceArg = sql.NullFloat64{Float64: *maxPrice, Valid: true}
+	}
+
+	products, err := ps.repo.GetAllProductByFilter(ctx, sqlc.GetAllProductByFilterParams{
+		SearchName: searchArg,
+		CateName:   cateArg,
+		BrandName:  brandArg,
+		MinPrice:   minPriceArg,
+		MaxPrice:   maxPriceArg,
+	})
 	if err != nil {
 		return nil, utils.HandleDbError(err)
 	}

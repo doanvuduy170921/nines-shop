@@ -28,7 +28,7 @@ type ProductRepository interface {
 	AddProductVariant(ctx context.Context, arg sqlc.AddProductVariantParams) (sqlc.ProductVariant, error)
 	AddAttributesConf(ctx context.Context, arg sqlc.AddAttributesConfParams) (sqlc.AttributeConfig, error)
 
-	GetAllProductByFilter(ctx context.Context) ([]sqlc.GetAllProductByFilterRow, error)
+	GetAllProductByFilter(ctx context.Context, arg sqlc.GetAllProductByFilterParams) ([]sqlc.GetAllProductByFilterRow, error)
 	GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error)
 	GetTop3Thumbnail(ctx context.Context, cateName string) ([]string, error)
 	GetTop3Trending(ctx context.Context, cateName string) ([]sqlc.GetTop3TrendingRow, error)

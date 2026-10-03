@@ -23,13 +23,28 @@ func NewProductHandler(service service.ProductService) *ProductHandler {
 
 func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
 
-	listProducts, err := ph.service.GetAllProductByFilter(ctx.Request.Context())
+	search := ctx.Query("search")
+	category := ctx.Query("category")
+	brand := ctx.Query("brand")
+
+	var minPrice, maxPrice *float64
+	if minStr := ctx.Query("min_price"); minStr != "" {
+		if val, err := strconv.ParseFloat(minStr, 64); err == nil {
+			minPrice = &val
+		}
+	}
+	if maxStr := ctx.Query("max_price"); maxStr != "" {
+		if val, err := strconv.ParseFloat(maxStr, 64); err == nil {
+			maxPrice = &val
+		}
+	}
+
+	listProducts, err := ph.service.GetAllProductByFilter(ctx.Request.Context(), search, category, brand, minPrice, maxPrice)
 	if err != nil {
 		utils.ResponseError(ctx, err)
 		return
 	}
 	utils.ResponseSuccess(ctx, http.StatusOK, listProducts, "Get All Product By Filter successfully")
-
 }
 
 func (ph *ProductHandler) AddProduct(ctx *gin.Context) {
