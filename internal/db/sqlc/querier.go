@@ -56,7 +56,7 @@ type Querier interface {
 	GetPOrderById(ctx context.Context, id int32) (PendingOrder, error)
 	GetProductById(ctx context.Context, id int32) (Product, error)
 	GetProductBySlug(ctx context.Context, slug string) (GetProductBySlugRow, error)
-	GetTop3Thumbnail(ctx context.Context) ([]string, error)
+	GetTop3Thumbnail(ctx context.Context, cateName string) ([]string, error)
 	GetTop3Trending(ctx context.Context, cateName string) ([]GetTop3TrendingRow, error)
 	GetVariantById(ctx context.Context, id int32) (GetVariantByIdRow, error)
 	GetVariantForUpdate(ctx context.Context, id int32) (GetVariantForUpdateRow, error)

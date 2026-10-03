@@ -90,10 +90,11 @@ where product_id =sqlc.arg(product_id);
 
 
 -- name: GetTop3Thumbnail :many
-select  products.thumbnail
-from products
-where category_id =8
-    limit 3;
+SELECT p.thumbnail
+FROM products p
+         JOIN categories c ON c.id = p.category_id
+WHERE c.name ILIKE sqlc.arg(cate_name)
+LIMIT 4;
 
 
 -- name: GetTop3Trending :many
@@ -119,7 +120,6 @@ SELECT
     b.name AS brand_name,
     c.name AS category_name,
     p.description,
-    -- Gộp tất cả biến thể vào một mảng JSON
     jsonb_agg(
             jsonb_build_object(
                     'variant_id', pv.id,
@@ -206,7 +206,7 @@ ORDER BY
 SELECT COUNT(*)
 FROM (
          SELECT p.id
-         FROM products p -- Đảm bảo tên bảng là products (có s) đồng nhất
+         FROM products p
                   LEFT JOIN brand b ON b.id = p.brand_id
                   LEFT JOIN categories c ON c.id = p.category_id
                   LEFT JOIN product_variants pv ON pv.product_id = p.id
@@ -215,7 +215,7 @@ FROM (
            AND (c.name ILIKE '%' || sqlc.arg(cate_name) || '%' OR sqlc.arg(cate_name) = '')
            AND (b.name ILIKE '%' || sqlc.arg(brand_name) || '%' OR sqlc.arg(brand_name) = '')
          GROUP BY
-             p.id -- Chỉ cần Group By id là đủ để tính MIN price
+             p.id 
          HAVING
              MIN(pv.price) >= sqlc.arg(min_price)
             AND MIN(pv.price) <= sqlc.arg(max_price)

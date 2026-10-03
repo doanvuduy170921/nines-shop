@@ -68,8 +68,8 @@ func (pr *productRepository) GetListVariantByPid(ctx context.Context, productID 
 	return pr.DB.GetListVariantByPid(ctx, productID)
 }
 
-func (pr *productRepository) GetTop3Thumbnail(ctx context.Context) ([]string, error) {
-	return pr.DB.GetTop3Thumbnail(ctx)
+func (pr *productRepository) GetTop3Thumbnail(ctx context.Context, cateName string) ([]string, error) {
+	return pr.DB.GetTop3Thumbnail(ctx, cateName)
 }
 
 func (pr *productRepository) GetTop3Trending(ctx context.Context, cateName string) ([]sqlc.GetTop3TrendingRow, error) {

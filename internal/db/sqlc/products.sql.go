@@ -162,7 +162,7 @@ const countGetListProducts = `-- name: CountGetListProducts :one
 SELECT COUNT(*)
 FROM (
          SELECT p.id
-         FROM products p -- Đảm bảo tên bảng là products (có s) đồng nhất
+         FROM products p
                   LEFT JOIN brand b ON b.id = p.brand_id
                   LEFT JOIN categories c ON c.id = p.category_id
                   LEFT JOIN product_variants pv ON pv.product_id = p.id
@@ -171,7 +171,7 @@ FROM (
            AND (c.name ILIKE '%' || $2 || '%' OR $2 = '')
            AND (b.name ILIKE '%' || $3 || '%' OR $3 = '')
          GROUP BY
-             p.id -- Chỉ cần Group By id là đủ để tính MIN price
+             p.id 
          HAVING
              MIN(pv.price) >= $4
             AND MIN(pv.price) <= $5
@@ -500,7 +500,6 @@ SELECT
     b.name AS brand_name,
     c.name AS category_name,
     p.description,
-    -- Gộp tất cả biến thể vào một mảng JSON
     jsonb_agg(
             jsonb_build_object(
                     'variant_id', pv.id,
@@ -554,15 +553,15 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (GetProduct
 }
 
 const getTop3Thumbnail = `-- name: GetTop3Thumbnail :many
-select  products.thumbnail
-from products
-where category_id =8
-    limit 3
-offset 3
+SELECT p.thumbnail
+FROM products p
+         JOIN categories c ON c.id = p.category_id
+WHERE c.name ILIKE $1
+LIMIT 4
 `
 
-func (q *Queries) GetTop3Thumbnail(ctx context.Context) ([]string, error) {
-	rows, err := q.db.Query(ctx, getTop3Thumbnail)
+func (q *Queries) GetTop3Thumbnail(ctx context.Context, cateName string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getTop3Thumbnail, cateName)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +593,6 @@ FROM products p
 WHERE c.name ILIKE $1
 GROUP BY p.id, p.name, p.thumbnail, b.name, p.slug
     LIMIT 4
-OFFSET 2
 `
 
 type GetTop3TrendingRow struct {
