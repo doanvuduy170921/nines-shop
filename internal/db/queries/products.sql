@@ -109,8 +109,7 @@ FROM products p
          LEFT JOIN brand b ON b.id = p.brand_id
 WHERE c.name ILIKE sqlc.arg(cate_name)
 GROUP BY p.id, p.name, p.thumbnail, b.name, p.slug
-    LIMIT 4
-OFFSET 2;
+    LIMIT 4;
 
 -- name: GetProductBySlug :one
 SELECT
