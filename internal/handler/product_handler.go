@@ -22,10 +22,19 @@ func NewProductHandler(service service.ProductService) *ProductHandler {
 }
 
 func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
-
 	search := ctx.Query("search")
-	category := ctx.Query("category")
-	brand := ctx.Query("brand")
+
+	var categoryID, brandID *int64
+	if catStr := ctx.Query("category_id"); catStr != "" {
+		if val, err := strconv.ParseInt(catStr, 10, 64); err == nil {
+			categoryID = &val
+		}
+	}
+	if brandStr := ctx.Query("brand_id"); brandStr != "" {
+		if val, err := strconv.ParseInt(brandStr, 10, 64); err == nil {
+			brandID = &val
+		}
+	}
 
 	var minPrice, maxPrice *float64
 	if minStr := ctx.Query("min_price"); minStr != "" {
@@ -39,14 +48,14 @@ func (ph *ProductHandler) GetAllByFilter(ctx *gin.Context) {
 		}
 	}
 
-	listProducts, err := ph.service.GetAllProductByFilter(ctx.Request.Context(), search, category, brand, minPrice, maxPrice)
+	listProducts, err := ph.service.GetAllProductByFilter(ctx.Request.Context(), search, categoryID, brandID, minPrice, maxPrice)
 	if err != nil {
 		utils.ResponseError(ctx, err)
 		return
 	}
+
 	utils.ResponseSuccess(ctx, http.StatusOK, listProducts, "Get All Product By Filter successfully")
 }
-
 func (ph *ProductHandler) AddProduct(ctx *gin.Context) {
 	var input dto.AddProductRequestDto
 	if err := ctx.ShouldBindJSON(&input); err != nil {

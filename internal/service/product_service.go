@@ -32,17 +32,10 @@ func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) Prod
 
 }
 
-func (ps *productService) GetAllProductByFilter(ctx context.Context, search, category, brand string, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error) {
-	var searchArg, cateArg, brandArg *string
-
+func (ps *productService) GetAllProductByFilter(ctx context.Context, search string, categoryID, brandID *int64, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error) {
+	var searchArg *string
 	if search != "" {
 		searchArg = &search
-	}
-	if category != "" {
-		cateArg = &category
-	}
-	if brand != "" {
-		brandArg = &brand
 	}
 
 	var minPriceArg, maxPriceArg pgtype.Numeric
@@ -55,8 +48,8 @@ func (ps *productService) GetAllProductByFilter(ctx context.Context, search, cat
 
 	products, err := ps.repo.GetAllProductByFilter(ctx, sqlc.GetAllProductByFilterParams{
 		SearchName: searchArg,
-		CateName:   cateArg,
-		BrandName:  brandArg,
+		CategoryID: categoryID,
+		BrandID:    brandID,
 		MinPrice:   minPriceArg,
 		MaxPrice:   maxPriceArg,
 	})

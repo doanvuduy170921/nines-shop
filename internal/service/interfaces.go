@@ -27,7 +27,7 @@ type AuthService interface {
 }
 
 type ProductService interface {
-	GetAllProductByFilter(ctx context.Context, search, category, brand string, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error)
+	GetAllProductByFilter(ctx context.Context, search string, categoryID, brandID *int64, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error)
 	AddProduct(c context.Context, input dto.AddProductRequestDto) (sqlc.Product, error)
 	GetListVariantByPid(ctx context.Context, productID int64) ([]sqlc.GetListVariantByPidRow, error)
 	GetTop3Thumbnail(ctx context.Context) (dto.GetTop3TrendingRes, error)
