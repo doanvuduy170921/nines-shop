@@ -32,7 +32,7 @@ func NewProductService(repo repository.ProductRepository, iu ImagesUpdater) Prod
 }
 
 func (ps *productService) GetAllProductByFilter(ctx context.Context, search, category, brand string, minPrice, maxPrice *float64) ([]sqlc.GetAllProductByFilterRow, error) {
-	// Chuyển đổi sang kiểu dữ liệu phù hợp với sqlc.narg (ví: sql.NullString hoặc con trỏ)
+
 	var searchArg, cateArg, brandArg sql.NullString
 
 	if search != "" {
