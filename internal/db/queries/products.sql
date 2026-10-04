@@ -26,6 +26,7 @@ SELECT
     p.name,
     p.status,
     p.thumbnail,
+    p.slug,
     c.name AS category_name,
     b.name AS brand_name,
     COALESCE(SUM(pv.stock_quantity), 0) AS total_stock,

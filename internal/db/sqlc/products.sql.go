@@ -268,6 +268,7 @@ SELECT
     p.name,
     p.status,
     p.thumbnail,
+    p.slug,
     c.name AS category_name,
     b.name AS brand_name,
     COALESCE(SUM(pv.stock_quantity), 0) AS total_stock,
@@ -300,6 +301,7 @@ type GetAllProductByFilterRow struct {
 	Name         string           `json:"name"`
 	Status       *string          `json:"status"`
 	Thumbnail    string           `json:"thumbnail"`
+	Slug         string           `json:"slug"`
 	CategoryName string           `json:"category_name"`
 	BrandName    string           `json:"brand_name"`
 	TotalStock   interface{}      `json:"total_stock"`
@@ -329,6 +331,7 @@ func (q *Queries) GetAllProductByFilter(ctx context.Context, arg GetAllProductBy
 			&i.Name,
 			&i.Status,
 			&i.Thumbnail,
+			&i.Slug,
 			&i.CategoryName,
 			&i.BrandName,
 			&i.TotalStock,
