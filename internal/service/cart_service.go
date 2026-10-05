@@ -29,9 +29,9 @@ func NewCartService(repo repository.CartRepository, uu UserUpdater, pu ProductUp
 }
 
 var shippingOptions = map[string]float64{
-	"Standard Delivery": 4.99,
-	"Express Delivery":  12.99,
-	"Free Shipping":     0.00,
+	"Standard Delivery": 30000.0,
+	"Express Delivery":  50000.0,
+	"Free Shipping":     0.0,
 }
 
 func (cs *cartService) AddToCart(ctx *gin.Context, userUuid string, req dto.AddToCartParams) (sqlc.Cart, error) {
