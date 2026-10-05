@@ -111,7 +111,7 @@ func (cs *cartService) DeleteItem(ctx *gin.Context, input dto.DeleteItemInCartPa
 	c := ctx.Request.Context()
 	userUuidStr, exists := ctx.Get("user_uuid")
 	if !exists {
-		return errors.New("User uuid not found in context")
+		return errors.New("user uuid not found in context")
 	}
 	userUuid := userUuidStr.(string)
 	uuid, err := utils.StringToPgUuid(userUuid)
@@ -134,7 +134,7 @@ func (cs *cartService) UpdateAllCart(ctx *gin.Context, input dto.UpdateAllCartPa
 	c := ctx.Request.Context()
 	userUuidStr, exists := ctx.Get("user_uuid")
 	if !exists {
-		return []sqlc.Cart{}, 0, 0, 0, 0, errors.New("User uuid not found in context")
+		return []sqlc.Cart{}, 0, 0, 0, 0, errors.New("user uuid not found in context")
 	}
 	userUuid := userUuidStr.(string)
 	uuid, err := utils.StringToPgUuid(userUuid)

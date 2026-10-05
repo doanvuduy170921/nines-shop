@@ -84,6 +84,7 @@ SELECT
     pv.price,
     pv.sku,
     pv.attributes,
+    pv.stock_quantity,
     p.id AS product_id,
     p.name,
     p.thumbnail
@@ -95,15 +96,16 @@ ORDER BY c.created_at DESC
 `
 
 type GetCartsByUserIdRow struct {
-	CartID     int64           `json:"cart_id"`
-	Quantity   *int32          `json:"quantity"`
-	VariantID  int32           `json:"variant_id"`
-	Price      pgtype.Numeric  `json:"price"`
-	Sku        *string         `json:"sku"`
-	Attributes json.RawMessage `json:"attributes"`
-	ProductID  int64           `json:"product_id"`
-	Name       string          `json:"name"`
-	Thumbnail  string          `json:"thumbnail"`
+	CartID        int64           `json:"cart_id"`
+	Quantity      *int32          `json:"quantity"`
+	VariantID     int32           `json:"variant_id"`
+	Price         pgtype.Numeric  `json:"price"`
+	Sku           *string         `json:"sku"`
+	Attributes    json.RawMessage `json:"attributes"`
+	StockQuantity int32           `json:"stock_quantity"`
+	ProductID     int64           `json:"product_id"`
+	Name          string          `json:"name"`
+	Thumbnail     string          `json:"thumbnail"`
 }
 
 func (q *Queries) GetCartsByUserId(ctx context.Context, userID int32) ([]GetCartsByUserIdRow, error) {
@@ -122,6 +124,7 @@ func (q *Queries) GetCartsByUserId(ctx context.Context, userID int32) ([]GetCart
 			&i.Price,
 			&i.Sku,
 			&i.Attributes,
+			&i.StockQuantity,
 			&i.ProductID,
 			&i.Name,
 			&i.Thumbnail,

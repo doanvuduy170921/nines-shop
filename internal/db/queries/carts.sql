@@ -28,6 +28,7 @@ SELECT
     pv.price,
     pv.sku,
     pv.attributes,
+    pv.stock_quantity,
     p.id AS product_id,
     p.name,
     p.thumbnail
