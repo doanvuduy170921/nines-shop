@@ -64,19 +64,23 @@ func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrd
 	c := ctx.Request.Context()
 	user, err := ns.extractAndValidateUser(ctx)
 	if err != nil {
+		log.Printf("extract and validater user error : %v", err)
 		return dto.CreatePendingOrderResponse{}, err
 	}
 
 	if len(arg.Items) == 0 {
+		log.Printf("arg.Items is empty")
 		return dto.CreatePendingOrderResponse{}, utils.NewError(400, "items cannot be empty")
 	}
 	txResult, err := ns.executeOrderTransaction(c, user, arg)
 	if err != nil {
+		log.Printf("executeOrderTransaction error : %v", err)
 		return dto.CreatePendingOrderResponse{}, err
 	}
 
 	paymentURL, err := ns.handlePostTransactionActions(ctx, txResult, user.Email, c)
 	if err != nil {
+		log.Printf("handlePostTransactionActions error : %v", err)
 		return dto.CreatePendingOrderResponse{}, err
 	}
 
@@ -89,16 +93,19 @@ func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrd
 func (ns *pendingOrderService) extractAndValidateUser(ctx *gin.Context) (sqlc.User, error) {
 	userUuid, exists := ctx.Get("user_uuid")
 	if !exists {
+		log.Printf("userUuid is empty")
 		return sqlc.User{}, utils.NewError(400, "user uuid not found in request context")
 	}
 
 	uuidStr, ok := userUuid.(string)
 	if !ok {
+		log.Printf("uuidStr is empty")
 		return sqlc.User{}, utils.NewError(400, "user uuid format is invalid")
 	}
 
 	pgUuid, err := utils.StringToPgUuid(uuidStr)
 	if err != nil {
+		log.Printf("uuidStr is invalid")
 		return sqlc.User{}, utils.NewError(400, "convert user uuid to uuid fail")
 	}
 
@@ -130,9 +137,11 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 			}
 
 			if !(*variant.IsActive) {
+				log.Printf("variant is not active")
 				return utils.NewError(http.StatusBadRequest, "Product is inactive")
 			}
 			if variant.StockQuantity < int32(item.Quantity) {
+				log.Printf("variant stock quantity is less then stock quantity")
 				return utils.NewError(http.StatusBadRequest, "Insufficient stock quantity")
 			}
 
@@ -142,6 +151,7 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 				VariantID: int32(item.VariantID),
 			})
 			if errTx != nil || result.RowsAffected() == 0 {
+				log.Printf("product stock fail: %v", errTx)
 				return utils.NewError(http.StatusBadRequest, "Product is out of stock or unavailable")
 			}
 		}
