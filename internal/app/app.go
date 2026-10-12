@@ -47,7 +47,7 @@ func NewApplication(cfg *config.Config, dbQueries *sqlc.Queries) *Application {
 	emailService := email.NewGmailService(*emailConfig)
 	userRepo := repository.NewUserRepository(dbQueries)
 	userService := service.NewUserService(userRepo, redisClient, emailService)
-
+	
 	tokenService := auth.NewJwtService(redisCacheService)
 	authService := service.NewAuthService(userRepo, tokenService, redisCacheService)
 

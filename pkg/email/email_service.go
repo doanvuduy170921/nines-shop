@@ -5,8 +5,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"net"
 	"net/smtp"
 	"nineshop-be/internal/config"
+	"time"
 )
 
 // GmailService implement EmailService
@@ -41,11 +43,16 @@ func (s *GmailService) send(to, subject, body string) error {
 	addr := fmt.Sprintf("%s:%s", s.config.SMTPHost, s.config.SMTPPort)
 
 	// Kết nối bình thường trước (plain TCP)
-	client, err := smtp.Dial(addr)
+	netConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
-		return fmt.Errorf("failed to connect: %w", err)
+		return fmt.Errorf("smtp connection timeout: %w", err)
 	}
-	defer client.Quit()
+
+	client, err := smtp.NewClient(netConn, s.config.SMTPHost)
+	if err != nil {
+		return fmt.Errorf("failed to create smtp client: %w", err)
+	}
+	defer client.Close()
 
 	// Nếu server hỗ trợ STARTTLS -> nâng cấp kết nối lên TLS
 	if ok, _ := client.Extension("STARTTLS"); ok {

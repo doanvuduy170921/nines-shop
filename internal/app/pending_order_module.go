@@ -7,6 +7,7 @@ import (
 	"nineshop-be/internal/repository"
 	"nineshop-be/internal/routes"
 	"nineshop-be/internal/service"
+	"nineshop-be/internal/worker"
 	"nineshop-be/pkg/email"
 )
 
@@ -24,8 +25,15 @@ func NewPendingOrderModule() *PendingOrderModule {
 	OrderStatusHisRepo := repository.NewOrderStatusHistory(db.DB)
 	EmailConfig := config.NewEmailConfig()
 	EmailService := email.NewGmailService(*EmailConfig)
+
+	emailWorker := worker.NewEmailWorkerPool(100, 3, EmailService)
+
+	if workerPool, ok := emailWorker.(*worker.EmailWorkerPool); ok {
+		workerPool.Start()
+	}
+
 	store := db.NewStore(db.DBPool)
-	PendingOrderService := service.NewPendingOrderService(store, PendingOrderRepo, userRepo, PendingOrderItemRepo, EmailService, OrderRepo, OrderItemRepo, ProductRepo, OrderStatusHisRepo)
+	PendingOrderService := service.NewPendingOrderService(emailWorker, store, PendingOrderRepo, userRepo, PendingOrderItemRepo, EmailService, OrderRepo, OrderItemRepo, ProductRepo, OrderStatusHisRepo)
 	PendingOrderHandler := handler.NewPendingOrderHandler(PendingOrderService)
 	PendingOrderRoute := routes.NewPendingOrderRoute(PendingOrderHandler)
 	return &PendingOrderModule{

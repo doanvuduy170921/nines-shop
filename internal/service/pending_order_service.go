@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"nineshop-be/internal/worker"
 	"strings"
 	"time"
 
@@ -21,71 +22,128 @@ import (
 )
 
 type pendingOrderService struct {
-	store *db.Store
-	repo  repository.PendingOrderRepository
-	ui    UserInject
-	pot   repository.PendingOrderItemRepository
-	email email.EmailService
-	or    repository.OrderRepository
-	oi    repository.OrderItemRepository
-	pr    repository.ProductRepository
-	osh   repository.OrderStatusHistoryRepository
+	store       *db.Store
+	repo        repository.PendingOrderRepository
+	ui          UserInject
+	pot         repository.PendingOrderItemRepository
+	email       email.EmailService
+	or          repository.OrderRepository
+	oi          repository.OrderItemRepository
+	pr          repository.ProductRepository
+	osh         repository.OrderStatusHistoryRepository
+	emailWorker worker.BackgroundWorker
 }
 
 type UserInject interface {
 	GetByUuid(ctx context.Context, uuid pgtype.UUID) (sqlc.User, error)
 }
 
-func NewPendingOrderService(store *db.Store, repo repository.PendingOrderRepository, ui UserInject, pot repository.PendingOrderItemRepository, email email.EmailService, or repository.OrderRepository, oi repository.OrderItemRepository, pr repository.ProductRepository, osh repository.OrderStatusHistoryRepository) PendingOrderService {
+func NewPendingOrderService(emailWorker worker.BackgroundWorker, store *db.Store, repo repository.PendingOrderRepository, ui UserInject, pot repository.PendingOrderItemRepository, email email.EmailService, or repository.OrderRepository, oi repository.OrderItemRepository, pr repository.ProductRepository, osh repository.OrderStatusHistoryRepository) PendingOrderService {
 	return &pendingOrderService{
-		store: store,
-		repo:  repo,
-		ui:    ui,
-		pot:   pot,
-		email: email,
-		or:    or,
-		oi:    oi,
-		pr:    pr,
-		osh:   osh,
+		store:       store,
+		repo:        repo,
+		ui:          ui,
+		pot:         pot,
+		email:       email,
+		or:          or,
+		oi:          oi,
+		pr:          pr,
+		osh:         osh,
+		emailWorker: emailWorker,
 	}
 }
 
-func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrderDto) (res dto.CreatePendingOrderResponse, err error) {
-	c := ctx.Request.Context()
+type orderTxResult struct {
+	PendingOrder   sqlc.PendingOrder
+	OTP            string
+	ShouldSendOTP  bool
+	VnPayRequested bool
+}
 
-	userUuid, exists := ctx.Get("user_uuid")
-	if !exists {
-		return dto.CreatePendingOrderResponse{}, utils.NewError(400, "user uuid not found in request context")
-	}
-	userUuidStr := userUuid.(string)
-	Uuid, err := utils.StringToPgUuid(userUuidStr)
+func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrderDto) (dto.CreatePendingOrderResponse, error) {
+	c := ctx.Request.Context()
+	user, err := ns.extractAndValidateUser(ctx)
 	if err != nil {
-		return dto.CreatePendingOrderResponse{}, utils.NewError(400, "convert user uuid to uuid fail")
+		return dto.CreatePendingOrderResponse{}, err
 	}
 
 	if len(arg.Items) == 0 {
 		return dto.CreatePendingOrderResponse{}, utils.NewError(400, "items cannot be empty")
 	}
+	txResult, err := ns.executeOrderTransaction(c, user, arg)
+	if err != nil {
+		return dto.CreatePendingOrderResponse{}, err
+	}
 
+	paymentURL, err := ns.handlePostTransactionActions(ctx, txResult, user.Email, c)
+	if err != nil {
+		return dto.CreatePendingOrderResponse{}, err
+	}
+
+	return dto.CreatePendingOrderResponse{
+		PendingOrder: txResult.PendingOrder,
+		VnPayURL:     paymentURL,
+	}, nil
+}
+
+func (ns *pendingOrderService) extractAndValidateUser(ctx *gin.Context) (sqlc.User, error) {
+	userUuid, exists := ctx.Get("user_uuid")
+	if !exists {
+		return sqlc.User{}, utils.NewError(400, "user uuid not found in request context")
+	}
+
+	uuidStr, ok := userUuid.(string)
+	if !ok {
+		return sqlc.User{}, utils.NewError(400, "user uuid format is invalid")
+	}
+
+	pgUuid, err := utils.StringToPgUuid(uuidStr)
+	if err != nil {
+		return sqlc.User{}, utils.NewError(400, "convert user uuid to uuid fail")
+	}
+
+	c := ctx.Request.Context()
+	user, err := ns.store.GetByUuid(c, pgUuid)
+	if err != nil {
+		log.Printf("get user by uuid fail: %v", err)
+		return sqlc.User{}, utils.NewError(http.StatusBadRequest, "get user by uuid fail")
+	}
+
+	return user, nil
+}
+
+func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user sqlc.User, arg dto.CreatePendingOrderDto) (orderTxResult, error) {
+	var pOrder sqlc.PendingOrder
+	var otp string
+	var otpExpiresAt pgtype.Timestamp
+	var shouldSendOTP bool
+	var vnpayRequested bool
 	var status = constant.OrderStatusPending
 
-	var (
-		user           sqlc.User
-		otp            string
-		otpExpiresAt   pgtype.Timestamp
-		shouldSendOTP  bool
-		pOrder         sqlc.PendingOrder
-		paymentURL     string
-		totalAmount    float64
-		vnpayRequested bool
-	)
+	err := ns.store.ExecTx(c, func(q *sqlc.Queries) error {
+		for _, item := range arg.Items {
+			// Khóa dòng sản phẩm để kiểm tra thông tin và tồn kho
+			variant, errTx := q.GetVariantForUpdate(c, int32(item.VariantID))
+			if errTx != nil {
+				log.Printf("get variant fail: %v", errTx)
+				return utils.WrapError(errTx, "Product variant not found", http.StatusBadRequest)
+			}
 
-	err = ns.store.ExecTx(c, func(q *sqlc.Queries) error {
-		var errTx error
+			if !(*variant.IsActive) {
+				return utils.NewError(http.StatusBadRequest, "Product is inactive")
+			}
+			if variant.StockQuantity < int32(item.Quantity) {
+				return utils.NewError(http.StatusBadRequest, "Insufficient stock quantity")
+			}
 
-		user, errTx = q.GetByUuid(c, Uuid)
-		if errTx != nil {
-			return utils.NewError(http.StatusBadRequest, "get user by uuid fail")
+			// Thực hiện trừ kho
+			result, errTx := q.DecreaseStock(c, sqlc.DecreaseStockParams{
+				Stock:     int32(item.Quantity),
+				VariantID: int32(item.VariantID),
+			})
+			if errTx != nil || result.RowsAffected() == 0 {
+				return utils.NewError(http.StatusBadRequest, "Product is out of stock or unavailable")
+			}
 		}
 
 		// Xử lý Payment Method / OTP
@@ -102,10 +160,8 @@ func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrd
 			vnpayRequested = arg.PaymentId == constant.PaymentMethodVnPay
 		}
 
-		// đếm số sản phẩm
 		count := int32(len(arg.Items))
-
-		log.Printf("DEBUG PENDING ORDER: Subtotal=%v, Total=%v, Tax=%v", arg.Subtotal, arg.Total, arg.Tax)
+		var errTx error
 
 		pOrder, errTx = q.CreatePendingOrder(c, sqlc.CreatePendingOrderParams{
 			UserID:          user.ID,
@@ -141,50 +197,45 @@ func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrd
 			}
 		}
 
-		if vnpayRequested {
-			totalAmountNumeric, _ := pOrder.TotalAmount.Float64Value()
-			totalAmount = totalAmountNumeric.Float64
-		}
-
 		return nil
 	})
 
 	if err != nil {
-		return dto.CreatePendingOrderResponse{}, err
+		return orderTxResult{}, err
 	}
 
-	// Sau khi transaction thành công:
-	// 1. Nếu VNPAY: tạo URL thanh toán
-	if vnpayRequested {
+	return orderTxResult{
+		PendingOrder:   pOrder,
+		OTP:            otp,
+		ShouldSendOTP:  shouldSendOTP,
+		VnPayRequested: vnpayRequested,
+	}, nil
+}
+
+func (ns *pendingOrderService) handlePostTransactionActions(ctx *gin.Context, txResult orderTxResult, userEmail string, c context.Context) (string, error) {
+	var paymentURL string
+	var err error
+
+	if txResult.VnPayRequested {
+		totalAmountNumeric, _ := txResult.PendingOrder.TotalAmount.Float64Value()
 		vnPayService := vnpay.NewService()
+
 		paymentURL, err = vnPayService.CreatePaymentURL(vnpay.OrderInfo{
-			ID:          int64(pOrder.ID),
-			TotalAmount: totalAmount,
+			ID:          int64(txResult.PendingOrder.ID),
+			TotalAmount: totalAmountNumeric.Float64,
 		}, ctx.ClientIP())
 		if err != nil {
 			log.Printf("ERROR creating VNPAY URL: %v", err)
-			return dto.CreatePendingOrderResponse{}, utils.WrapError(err, "Create VNPAY URL fail", http.StatusInternalServerError)
+			return "", utils.WrapError(err, "Create VNPAY URL fail", http.StatusInternalServerError)
 		}
 	}
 
-	// 2. Nếu COD: gửi email OTP đồng bộ, lấy email từ DB (user.Email)
-	if shouldSendOTP {
-		// Tôn trọng context: nếu request đã bị hủy thì không gửi nữa
-		select {
-		case <-c.Done():
-			log.Printf("skip sending OTP email, context canceled for user %d", user.ID)
-		default:
-			if sendErr := ns.email.SendOTPEmail(user.Email, otp); sendErr != nil {
-				log.Printf("send OTP email fail for user %d (%s): %v", user.ID, user.Email, sendErr)
-				return dto.CreatePendingOrderResponse{}, utils.WrapError(sendErr, "Send OTP email fail", http.StatusInternalServerError)
-			}
-		}
+	if txResult.ShouldSendOTP {
+		ns.emailWorker.EnqueueEmailTask(userEmail, txResult.OTP)
+		log.Printf("Đã đưa task gửi email OTP vào background worker cho user: %s", userEmail)
 	}
 
-	return dto.CreatePendingOrderResponse{
-		PendingOrder: pOrder,
-		VnPayURL:     paymentURL,
-	}, nil
+	return paymentURL, nil
 }
 
 func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTPParams) (sqlc.Order, error) {
@@ -193,18 +244,15 @@ func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTP
 	var order sqlc.Order
 
 	err := ns.store.ExecTx(c, func(q *sqlc.Queries) error {
-		// 2. Lấy pending order theo pId
 		pOrder, errTx := q.GetPOrderById(c, int32(arg.POrderId))
 		if errTx != nil {
 			return utils.WrapError(errTx, "Get pending order fail", http.StatusBadRequest)
 		}
 
-		// 3. Kiểm tra mã OTP hết hạn hay chưa
 		if !pOrder.OtpExpiresAt.Valid || time.Now().After(pOrder.OtpExpiresAt.Time) {
 			return utils.NewError(http.StatusBadRequest, "Otp expired")
 		}
 
-		// 4. Kiểm tra OTP có hợp lệ không
 		if strings.TrimSpace(arg.Otp) != strings.TrimSpace(pOrder.Otp) {
 			return utils.NewError(http.StatusBadRequest, "Otp invalid")
 		}
@@ -231,7 +279,6 @@ func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTP
 
 		statusHistory := constant.OrderStatusPending
 		note := constant.OrderStatusNotes[statusHistory]
-		// 6. Tạo order status history đầu tiên
 		_, errTx = q.CreateOrderStatusHistory(c, sqlc.CreateOrderStatusHistoryParams{
 			OrderID: order.ID,
 			Status:  statusHistory,
@@ -241,13 +288,11 @@ func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTP
 			return utils.WrapError(errTx, "Create order status history fail", http.StatusInternalServerError)
 		}
 
-		// 7. Lấy list pending order item
 		pOrderItems, errTx := q.GetByPOrderItemId(c, pOrder.ID)
 		if errTx != nil {
 			return utils.WrapError(errTx, "Get pending order items fail", http.StatusInternalServerError)
 		}
 
-		// 8. Copy từng item sang order_items
 		for _, item := range pOrderItems {
 			product, errVariant := q.GetVariantById(c, item.VariantID)
 			if errVariant != nil {
