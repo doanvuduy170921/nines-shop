@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"nineshop-be/internal/config"
 	"nineshop-be/internal/db"
 	"nineshop-be/internal/handler"
@@ -8,14 +9,16 @@ import (
 	"nineshop-be/internal/routes"
 	"nineshop-be/internal/service"
 	"nineshop-be/internal/worker"
+	"nineshop-be/pkg/cache"
 	"nineshop-be/pkg/email"
+	"time"
 )
 
 type PendingOrderModule struct {
 	route *routes.PendingOrderRoute
 }
 
-func NewPendingOrderModule() *PendingOrderModule {
+func NewPendingOrderModule(ctx context.Context, redis cache.RedisCacheService) *PendingOrderModule {
 	userRepo := repository.NewUserRepository(db.DB)
 	PendingOrderRepo := repository.NewPendingOrderRepository(db.DB)
 	PendingOrderItemRepo := repository.NewPendingOrderItemRepository(db.DB)
@@ -33,7 +36,8 @@ func NewPendingOrderModule() *PendingOrderModule {
 	}
 
 	store := db.NewStore(db.DBPool)
-	PendingOrderService := service.NewPendingOrderService(emailWorker, store, PendingOrderRepo, userRepo, PendingOrderItemRepo, EmailService, OrderRepo, OrderItemRepo, ProductRepo, OrderStatusHisRepo)
+	PendingOrderService := service.NewPendingOrderService(emailWorker, store, PendingOrderRepo, userRepo, PendingOrderItemRepo, EmailService, OrderRepo, OrderItemRepo, ProductRepo, OrderStatusHisRepo, redis)
+	service.StartExpiredPendingOrderJob(ctx, PendingOrderService, time.Minute)
 	PendingOrderHandler := handler.NewPendingOrderHandler(PendingOrderService)
 	PendingOrderRoute := routes.NewPendingOrderRoute(PendingOrderHandler)
 	return &PendingOrderModule{

@@ -11,40 +11,61 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const confirmPendingOrder = `-- name: ConfirmPendingOrder :one
+UPDATE pending_orders
+SET status = 'confirmed'
+WHERE id = $1::int
+  AND user_id = $2::int
+  AND status = 'pending'
+  AND expires_at > now()
+RETURNING id
+`
+
+type ConfirmPendingOrderParams struct {
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
+}
+
+func (q *Queries) ConfirmPendingOrder(ctx context.Context, arg ConfirmPendingOrderParams) (int32, error) {
+	row := q.db.QueryRow(ctx, confirmPendingOrder, arg.ID, arg.UserID)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createPendingOrder = `-- name: CreatePendingOrder :one
 INSERT INTO pending_orders(
     user_id, name, email, phone, payment_method_id, address,
-    otp, otp_expires_at, subtotal, total_amount, shipping_price,
-    tax, status, amount_item
+    otp, otp_expires_at, expires_at, subtotal, total_amount, shipping_price,
+    tax, amount_item
 )
 VALUES (
            $1, $2, $3, $4, $5, $6,
-           $7, $8,
-           $9::NUMERIC(15,2),
+           $7, $8, $9::timestamptz,
            $10::NUMERIC(15,2),
            $11::NUMERIC(15,2),
            $12::NUMERIC(15,2),
-           $13,
+           $13::NUMERIC(15,2),
            $14
        )
-    RETURNING id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item
+    RETURNING id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item, otp_attempts, expires_at
 `
 
 type CreatePendingOrderParams struct {
-	UserID          int32            `json:"user_id"`
-	Name            string           `json:"name"`
-	Email           string           `json:"email"`
-	Phone           string           `json:"phone"`
-	PaymentMethodID int32            `json:"payment_method_id"`
-	Address         string           `json:"address"`
-	Otp             string           `json:"otp"`
-	OtpExpiresAt    pgtype.Timestamp `json:"otp_expires_at"`
-	Subtotal        pgtype.Numeric   `json:"subtotal"`
-	TotalAmount     pgtype.Numeric   `json:"total_amount"`
-	ShippingPrice   pgtype.Numeric   `json:"shipping_price"`
-	Tax             pgtype.Numeric   `json:"tax"`
-	Status          *string          `json:"status"`
-	AmountItem      *int32           `json:"amount_item"`
+	UserID          int32              `json:"user_id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Phone           string             `json:"phone"`
+	PaymentMethodID int32              `json:"payment_method_id"`
+	Address         string             `json:"address"`
+	Otp             string             `json:"otp"`
+	OtpExpiresAt    pgtype.Timestamp   `json:"otp_expires_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	Subtotal        pgtype.Numeric     `json:"subtotal"`
+	TotalAmount     pgtype.Numeric     `json:"total_amount"`
+	ShippingPrice   pgtype.Numeric     `json:"shipping_price"`
+	Tax             pgtype.Numeric     `json:"tax"`
+	AmountItem      *int32             `json:"amount_item"`
 }
 
 func (q *Queries) CreatePendingOrder(ctx context.Context, arg CreatePendingOrderParams) (PendingOrder, error) {
@@ -57,11 +78,11 @@ func (q *Queries) CreatePendingOrder(ctx context.Context, arg CreatePendingOrder
 		arg.Address,
 		arg.Otp,
 		arg.OtpExpiresAt,
+		arg.ExpiresAt,
 		arg.Subtotal,
 		arg.TotalAmount,
 		arg.ShippingPrice,
 		arg.Tax,
-		arg.Status,
 		arg.AmountItem,
 	)
 	var i PendingOrder
@@ -82,12 +103,14 @@ func (q *Queries) CreatePendingOrder(ctx context.Context, arg CreatePendingOrder
 		&i.Status,
 		&i.CreatedAt,
 		&i.AmountItem,
+		&i.OtpAttempts,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
 
 const getPOrderById = `-- name: GetPOrderById :one
-select id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item
+select id, user_id, name, email, phone, payment_method_id, address, otp, otp_expires_at, subtotal, total_amount, shipping_price, tax, status, created_at, amount_item, otp_attempts, expires_at
 from pending_orders
 where id = $1::int
 `
@@ -112,6 +135,49 @@ func (q *Queries) GetPOrderById(ctx context.Context, id int32) (PendingOrder, er
 		&i.Status,
 		&i.CreatedAt,
 		&i.AmountItem,
+		&i.OtpAttempts,
+		&i.ExpiresAt,
 	)
 	return i, err
+}
+
+const incrementOtpAttempts = `-- name: IncrementOtpAttempts :one
+UPDATE pending_orders
+SET otp_attempts = otp_attempts + 1
+WHERE id = $1::int AND status = 'pending'
+RETURNING otp_attempts
+`
+
+func (q *Queries) IncrementOtpAttempts(ctx context.Context, id int32) (int32, error) {
+	row := q.db.QueryRow(ctx, incrementOtpAttempts, id)
+	var otp_attempts int32
+	err := row.Scan(&otp_attempts)
+	return otp_attempts, err
+}
+
+const listExpiredPendingOrderIDs = `-- name: ListExpiredPendingOrderIDs :many
+SELECT id FROM pending_orders
+WHERE status = 'pending' AND expires_at < now()
+ORDER BY expires_at
+    LIMIT 100
+`
+
+func (q *Queries) ListExpiredPendingOrderIDs(ctx context.Context) ([]int32, error) {
+	rows, err := q.db.Query(ctx, listExpiredPendingOrderIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int32{}
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

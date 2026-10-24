@@ -11,7 +11,7 @@ import (
 
 type OrderInfo struct {
 	ID          int64
-	TotalAmount float64 // vì pgtype.Numeric có method .Float64
+	TotalAmount float64
 }
 
 type service struct{}
@@ -21,28 +21,18 @@ func NewService() Service {
 }
 
 func (s *service) CreatePaymentURL(order OrderInfo, ipAddr string) (string, error) {
-	// ✅ FIX: Convert IPv6 localhost → IPv4
 	if ipAddr == "::1" || ipAddr == "" {
 		ipAddr = "127.0.0.1"
 	}
-	
-	// 1. Số tiền bây giờ đã là VND trực tiếp từ Frontend/DB
 	amountVND := order.TotalAmount
-
-	// 2. VNPAY yêu cầu số tiền nhân 100 để ra đơn vị "xu" (cents)
-	// Lưu ý: Dùng math.Round để đảm bảo không bị sai số lẻ
 	amountInXu := int64(math.Round(amountVND * 100))
-
-	// Debug log - Cập nhật lại log cho chính xác đơn vị
 	log.Printf("💰 CreatePaymentURL: %.0f VND → %d xu", amountVND, amountInXu)
 
-	// 3. Kiểm tra giới hạn VNPay (5,000 - 999,999,999 VND)
 	if amountVND < 5000 {
-		return "", fmt.Errorf("Số tiền quá nhỏ: %.0f VND (tối thiểu 5,000 VND)", amountVND)
+		return "", fmt.Errorf("Amount too small: %.0f VND (minimum 5,000 VND)", amountVND)
 	}
-	// Giới hạn 1 tỷ đồng (VNPAY thường giới hạn giao dịch dưới 1 tỷ)
 	if amountVND >= 1000000000 {
-		return "", fmt.Errorf("Số tiền quá lớn: %.0f VND (tối đa 999,999,999 VND)", amountVND)
+		return "", fmt.Errorf("Amount too large: %.0f VND (maximum 999,999,999 VND)", amountVND)
 	}
 
 	return CreatePaymentURL(order.ID, amountInXu, ipAddr)

@@ -32,13 +32,13 @@ func (w *EmailWorkerPool) Start() {
 	for i := 0; i < w.workerCount; i++ {
 		go func(workerID int) {
 			for task := range w.taskQueue {
-				log.Printf("[EmailWorker #%d] Đang gửi OTP tới: %s", workerID, task.ToEmail)
+				log.Printf("EmailWorker %d Sending OTP to: %s", workerID, task.ToEmail)
 
 				err := w.emailService.SendOTPEmail(task.ToEmail, task.OTPCode)
 				if err != nil {
-					log.Printf("[EmailWorker #%d] Lỗi khi gửi email tới %s: %v", workerID, task.ToEmail, err)
+					log.Printf("EmailWorker %d Error sending email to %s: %v", workerID, task.ToEmail, err)
 				} else {
-					log.Printf("[EmailWorker #%d] Gửi email thành công tới %s", workerID, task.ToEmail)
+					log.Printf("EmailWorker %d Successfully sent email to %s", workerID, task.ToEmail)
 				}
 			}
 		}(i)

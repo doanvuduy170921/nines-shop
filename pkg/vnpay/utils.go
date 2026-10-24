@@ -36,8 +36,6 @@ func CreatePaymentURL(orderID int64, amount int64, ipAddr string) (string, error
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-
-	// ✅ FIX: Tạo hashData KHÔNG encode - đúng chuẩn VNPAY
 	var hashData strings.Builder
 	var queryBuilder strings.Builder
 
@@ -46,16 +44,12 @@ func CreatePaymentURL(orderID int64, amount int64, ipAddr string) (string, error
 			hashData.WriteByte('&')
 			queryBuilder.WriteByte('&')
 		}
-		// Hash: raw value, không encode
 		hashData.WriteString(k + "=" + params[k])
-		// URL: encode value, space → %20 (không phải +)
 		encodedVal := strings.ReplaceAll(url.QueryEscape(params[k]), "+", "%20")
 		queryBuilder.WriteString(k + "=" + encodedVal)
 	}
 
 	hash := hmacSHA512(hashData.String(), HashSecret)
-
-	// 👇 DEBUG LOG
 	log.Printf("🔐 Hash input:\n%s", hashData.String())
 	log.Printf("🔐 Hash output (%d chars): %s", len(hash), hash)
 
@@ -70,7 +64,6 @@ func VerifySecureHash(query url.Values) bool {
 		return false
 	}
 
-	// Clone để không mutate original
 	cloned := url.Values{}
 	for k, v := range query {
 		cloned[k] = v
@@ -83,8 +76,6 @@ func VerifySecureHash(query url.Values) bool {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-
-	// ✅ FIX: Hash trên raw string, KHÔNG encode - đúng chuẩn VNPAY
 	var data strings.Builder
 	for i, k := range keys {
 		if i > 0 {
@@ -101,7 +92,6 @@ func hmacSHA512(data, key string) string {
 	mac := hmac.New(sha512.New, []byte(key))
 	mac.Write([]byte(data))
 	result := mac.Sum(nil)
-	// Đảm bảo luôn 128 ký tự
 	hash := fmt.Sprintf("%064x%064x",
 		new(big.Int).SetBytes(result[:32]),
 		new(big.Int).SetBytes(result[32:]))

@@ -1,7 +1,9 @@
 package app
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -11,6 +13,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/redis/go-redis/v9"
 	"log"
+	"net/http"
 	"nineshop-be/internal/config"
 	"nineshop-be/internal/db/sqlc"
 	"nineshop-be/internal/repository"
@@ -21,6 +24,7 @@ import (
 	"nineshop-be/pkg/cache"
 	"nineshop-be/pkg/email"
 	"sync"
+	"time"
 )
 
 type Module interface {
@@ -36,7 +40,7 @@ type Application struct {
 
 var registerValidatorOnce sync.Once
 
-func NewApplication(cfg *config.Config, dbQueries *sqlc.Queries) *Application {
+func NewApplication(ctx context.Context, cfg *config.Config, dbQueries *sqlc.Queries) *Application {
 	r := gin.Default()
 	r.Static("/uploads", "./uploads")
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -47,7 +51,7 @@ func NewApplication(cfg *config.Config, dbQueries *sqlc.Queries) *Application {
 	emailService := email.NewGmailService(*emailConfig)
 	userRepo := repository.NewUserRepository(dbQueries)
 	userService := service.NewUserService(userRepo, redisClient, emailService)
-	
+
 	tokenService := auth.NewJwtService(redisCacheService)
 	authService := service.NewAuthService(userRepo, tokenService, redisCacheService)
 
@@ -59,7 +63,7 @@ func NewApplication(cfg *config.Config, dbQueries *sqlc.Queries) *Application {
 		NewBrandModule(),
 		NewProductImagesModule(),
 		NewCartModule(),
-		NewPendingOrderModule(),
+		NewPendingOrderModule(ctx, redisCacheService),
 		NewPaymentModule(),
 		NewOrderItemModule(),
 		NewOrderModule(),
@@ -81,8 +85,32 @@ func NewApplication(cfg *config.Config, dbQueries *sqlc.Queries) *Application {
 	}
 }
 
-func (a *Application) Run() error {
-	return a.router.Run(a.config.ServerAddress)
+func (a *Application) Run(ctx context.Context) error {
+	srv := &http.Server{
+		Addr:              a.config.ServerAddress,
+		Handler:           a.router,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+	}()
+
+	select {
+	case err := <-errChan:
+		return fmt.Errorf("server error: %w", err)
+	case <-ctx.Done():
+		log.Println("shutting down server...")
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
 }
 
 func getRoutes(modules []Module) []routes.Route {

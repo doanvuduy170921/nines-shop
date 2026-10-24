@@ -8,7 +8,7 @@ const (
 	PaymentURL  = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
 	Locale      = "vn"
 	CurrCode    = "VND"
-	TxRefPrefix = "NINESHOP" // mày để là NINESHOP123 → sẽ cắt prefix này
+	TxRefPrefix = "NINESHOP"
 )
 
-const USD_TO_VND_RATE = 25000 // Tỷ giá USD -> VND
+const USD_TO_VND_RATE = 25000

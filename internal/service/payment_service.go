@@ -145,30 +145,24 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 		}
 	}()
 
-	// 2. Lấy pending order theo ID
 	pOrder, err := qTx.GetPOrderById(c, int32(orderID))
 	if err != nil {
 		return sqlc.Order{}, utils.WrapError(err, "Pending order not found", http.StatusBadRequest)
 	}
 
-	// 3. Kiểm tra pending order có phải VNPay không
 	if pOrder.PaymentMethodID != constant.PaymentMethodVnPay {
 		return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "This order is not VNPay payment")
 	}
 
-	// 5. Kiểm tra số tiền có khớp không
-	vnpayAmountVND := amount // Số tiền này đã là VND (sau khi chia 100 ở VerifyAndParseIPN)
+	vnpayAmountVND := amount
 
-	// Lấy giá trị từ Database (pgtype.Numeric)
 	floatVal, _ := pOrder.TotalAmount.Float64Value()
 	expectedAmountVNDFloat := floatVal.Float64
 
-	// KHÔNG NHÂN VỚI USD_TO_VND_RATE NỮA
 	expectedAmountVND := int64(math.Round(expectedAmountVNDFloat))
 
 	log.Printf("🔍 Amount check: VNPay=%d VND, Expected=%d VND", vnpayAmountVND, expectedAmountVND)
 
-	// ✅ Cho phép chênh lệch ±1 VND do làm tròn
 	diff := vnpayAmountVND - expectedAmountVND
 	if diff < -1 || diff > 1 {
 		return sqlc.Order{}, utils.NewError(http.StatusBadRequest,
@@ -176,7 +170,6 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 				vnpayAmountVND, expectedAmountVND, diff))
 	}
 
-	// 6. Tạo order thật
 	paymentStatus := constant.PaymentStatusPaid
 	order, err := qTx.CreateOrder(c, sqlc.CreateOrderParams{
 		UserID:          pOrder.UserID,
@@ -198,7 +191,6 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 		return sqlc.Order{}, utils.WrapError(err, "Create order fail", http.StatusInternalServerError)
 	}
 
-	// 7. Tạo order status history
 	statusHistory := constant.OrderStatusPending
 	note := constant.OrderStatusNotes[statusHistory]
 	_, err = qTx.CreateOrderStatusHistory(c, sqlc.CreateOrderStatusHistoryParams{
@@ -210,43 +202,35 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 		return sqlc.Order{}, utils.WrapError(err, "Create order status history fail", http.StatusInternalServerError)
 	}
 
-	// 8. Lấy list pending order items
 	pOrderItems, err := qTx.GetByPOrderItemId(c, pOrder.ID)
 	if err != nil {
 		return sqlc.Order{}, utils.WrapError(err, "Get pending order items fail", http.StatusInternalServerError)
 	}
 
-	// 9. Copy từng item sang order_items VÀ TRỪ KHO
 	for _, item := range pOrderItems {
-		// A. Khóa Variant và kiểm tra tồn kho hiện tại (Pessimistic Lock)
-		// Query: GetVariantForUpdate
 		variant, err := qTx.GetVariantForUpdate(c, item.VariantID)
 		if err != nil {
-			return sqlc.Order{}, utils.WrapError(err, fmt.Sprintf("Variant %d không tồn tại", item.VariantID), http.StatusBadRequest)
+			return sqlc.Order{}, utils.WrapError(err, fmt.Sprintf("Variant %d does not exist", item.VariantID), http.StatusBadRequest)
 		}
 
 		if !*variant.IsActive {
-			return sqlc.Order{}, utils.NewError(http.StatusBadRequest, fmt.Sprintf("Sản phẩm %s hiện đã ngừng kinh doanh", variant.ProductName))
+			return sqlc.Order{}, utils.NewError(http.StatusBadRequest, fmt.Sprintf("Product %s is no longer available for sale", variant.ProductName))
 		}
 
-		// B. Thực hiện trừ kho (Atomic Update)
-		// Query: DecreaseStock (:execresult)
 		res, err := qTx.DecreaseStock(c, sqlc.DecreaseStockParams{
 			VariantID: item.VariantID,
 			Stock:     item.Quantity,
 		})
 		if err != nil {
-			return sqlc.Order{}, utils.WrapError(err, "Lỗi cập nhật kho hàng", http.StatusInternalServerError)
+			return sqlc.Order{}, utils.WrapError(err, "Inventory update error", http.StatusInternalServerError)
 		}
 
-		// C. Kiểm tra xem có trừ thành công không (Trường hợp kho không đủ)
-		rowsAffected := res.RowsAffected() // Đối với pgx/v5 sqlc, RowsAffected trả về trực tiếp số lượng
+		rowsAffected := res.RowsAffected()
 		if rowsAffected == 0 {
 			return sqlc.Order{}, utils.NewError(http.StatusBadRequest,
-				fmt.Sprintf("Sản phẩm %s không đủ số lượng tồn kho (Còn lại: %d)", variant.ProductName, variant.StockQuantity))
+				fmt.Sprintf("Product %s has insufficient stock (Remaining: %d)", variant.ProductName, variant.StockQuantity))
 		}
 
-		// D. Sau khi trừ kho thành công, mới thêm vào bảng order_items
 		_, err = qTx.AddOrderItem(c, sqlc.AddOrderItemParams{
 			OrderID:          order.ID,
 			VariantID:        item.VariantID,
@@ -259,8 +243,6 @@ func (ps *paymentService) ProcessVNPayPayment(ctx *gin.Context, orderID int64, a
 			return sqlc.Order{}, utils.WrapError(err, "Add order item fail", http.StatusInternalServerError)
 		}
 	}
-
-	// 10. Commit transaction
 	if err := tx.Commit(c); err != nil {
 		return sqlc.Order{}, utils.NewError(http.StatusInternalServerError, "Commit transaction failed")
 	}

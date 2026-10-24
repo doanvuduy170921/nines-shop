@@ -75,7 +75,7 @@ func GenProductSlug(name string) string {
 }
 
 func GenSKU(name string, attrs map[string]interface{}) string {
-	parts := []string{strings.ToUpper(name[:3])} // Lấy 3 chữ đầu tên SP
+	parts := []string{strings.ToUpper(name[:3])}
 
 	for _, v := range attrs {
 		val := fmt.Sprintf("%v", v)

@@ -3,8 +3,8 @@ package vnpay
 import "os"
 
 type Config struct {
-	ReturnURL string // frontend nhận kết quả
-	IPNURL    string // backend nhận callback (không cần dùng trong utils)
+	ReturnURL string
+	IPNURL    string
 }
 
 func LoadConfig() Config {

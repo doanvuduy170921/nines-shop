@@ -19,6 +19,7 @@ type Querier interface {
 	AddProductSpec(ctx context.Context, arg AddProductSpecParams) (ProductSpecification, error)
 	AddProductVariant(ctx context.Context, arg AddProductVariantParams) (ProductVariant, error)
 	AddToCart(ctx context.Context, arg AddToCartParams) (Cart, error)
+	ConfirmPendingOrder(ctx context.Context, arg ConfirmPendingOrderParams) (int32, error)
 	CountGetListProducts(ctx context.Context, arg CountGetListProductsParams) (int64, error)
 	CountProduct(ctx context.Context, arg CountProductParams) (int64, error)
 	CountUser(ctx context.Context, arg CountUserParams) (int64, error)
@@ -60,11 +61,15 @@ type Querier interface {
 	GetTop3Trending(ctx context.Context, cateName string) ([]GetTop3TrendingRow, error)
 	GetVariantById(ctx context.Context, id int32) (GetVariantByIdRow, error)
 	GetVariantForUpdate(ctx context.Context, id int32) (GetVariantForUpdateRow, error)
+	IncreaseStock(ctx context.Context, arg IncreaseStockParams) error
+	IncrementOtpAttempts(ctx context.Context, id int32) (int32, error)
+	ListExpiredPendingOrderIDs(ctx context.Context) ([]int32, error)
 	SaveAndUploadImg(ctx context.Context, arg SaveAndUploadImgParams) (ProductImage, error)
 	SoftDeleteUser(ctx context.Context, userUuid pgtype.UUID) (User, error)
 	UpdateAllCart(ctx context.Context, arg UpdateAllCartParams) (Cart, error)
 	UpdateCart(ctx context.Context, arg UpdateCartParams) (Cart, error)
 	UpdateOrderPayment(ctx context.Context, arg UpdateOrderPaymentParams) error
+	UpdatePendingOrderStatus(ctx context.Context, arg UpdatePendingOrderStatusParams) (UpdatePendingOrderStatusRow, error)
 	UpdateStatusForUser(ctx context.Context, arg UpdateStatusForUserParams) error
 	UpdateThumbnail(ctx context.Context, arg UpdateThumbnailParams) (Product, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

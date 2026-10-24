@@ -11,7 +11,7 @@ type Route interface {
 	Register(r *gin.RouterGroup)
 }
 
-func RegisterRoute(cache cache.RedisCacheService, r *gin.Engine, routes ...Route) { // ... dùng để bắt tất cả các Route
+func RegisterRoute(cache cache.RedisCacheService, r *gin.Engine, routes ...Route) { // ... Used to capture all routes.
 	r.Use(middleware.CORSMiddleware())
 	api := r.Group("/api/v1")
 	protected := api.Group("")

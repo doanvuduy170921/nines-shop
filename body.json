@@ -1,0 +1,16 @@
+{
+  "payment_id":1,
+  "address":"DN",
+  "name":"Doan Vu Duy",
+  "email":"doanvuduydtu@gmail.com",
+  "phone":"0384396351",
+  "total":120,
+  "subtotal":120,
+  "shipping":120,
+  "tax":1,
+  "items":[{
+    "variant_id":84,
+    "quantity":8,
+    "price":24
+  }]
+}

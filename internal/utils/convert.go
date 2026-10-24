@@ -13,17 +13,12 @@ func Float64ToPgTypeNumeric(f float64) pgtype.Numeric {
 }
 
 func PgNumericToInt64(n pgtype.Numeric) (int64, error) {
-	// 1. Check NULL
 	if !n.Valid {
 		return 0, errors.New("numeric is NULL")
 	}
-
-	// 2. Không cho phép số thập phân
 	if n.Exp != 0 {
 		return 0, errors.New("numeric has decimal part, cannot convert to int64")
 	}
-
-	// 3. Convert *big.Int -> int64
 	if !n.Int.IsInt64() {
 		return 0, errors.New("numeric overflows int64")
 	}

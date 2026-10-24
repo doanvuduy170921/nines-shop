@@ -55,7 +55,6 @@ func WrapError(err error, message string, code ErrorCode) *AppError {
 }
 
 func ResponseError(c *gin.Context, err error) {
-	// vì AppError là error nên ép kiểu sang AppError
 	if err, ok := err.(*AppError); ok {
 		c.JSON(ErrCodeToInt(err.Code), gin.H{
 			"code":    err.Code,
@@ -63,7 +62,6 @@ func ResponseError(c *gin.Context, err error) {
 		})
 		return
 	}
-	// Trường hợp err là error bình thường
 	c.JSON(http.StatusInternalServerError, gin.H{
 		"code":    ErrorCodeInternalError,
 		"message": "Internal server error",

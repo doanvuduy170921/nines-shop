@@ -9,6 +9,13 @@ const (
 	OrderStatusRefunded   = "refunded"
 )
 
+const (
+	PendingOrderStatusPending   = "pending"
+	PendingOrderStatusConfirmed = "confirmed"
+	PendingOrderStatusCancelled = "cancelled"
+	PendingOrderStatusExpired   = "expired"
+)
+
 var ValidOrderStatus = map[string]bool{
 	OrderStatusPending:    true,
 	OrderStatusProcessing: true,
@@ -35,11 +42,10 @@ var AllowedTransactions = map[string][]string{
 		OrderStatusDelivered,
 	},
 	OrderStatusDelivered: {
-		OrderStatusRefunded, // nếu user muốn hoàn tiền.
+		OrderStatusRefunded,
 	},
 }
 
-// hàm kiểm tra nhảy cóc (vd: pending --> shipping )
 func CanTransaction(current, next string) bool {
 	allowed, ok := AllowedTransactions[current]
 	if !ok {

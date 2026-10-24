@@ -38,8 +38,6 @@ func NewUserService(repo repository.UserRepository, redisClient *redis.Client, m
 		mail:      mail,
 		mailQueue: make(chan mailPayload, 100),
 	}
-
-	// 2. Chạy worker từ instance 'us' vừa tạo
 	go us.ProcessMailQueue()
 
 	return us

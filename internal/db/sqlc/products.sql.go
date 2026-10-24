@@ -698,7 +698,7 @@ FROM product_variants pv
          JOIN products p ON pv.product_id = p.id
 WHERE pv.id = $1
     LIMIT 1
-FOR UPDATE
+FOR UPDATE OF pv
 `
 
 type GetVariantForUpdateRow struct {
@@ -721,6 +721,46 @@ func (q *Queries) GetVariantForUpdate(ctx context.Context, id int32) (GetVariant
 		&i.ProductName,
 		&i.ProductThumbnail,
 	)
+	return i, err
+}
+
+const increaseStock = `-- name: IncreaseStock :exec
+UPDATE product_variants
+SET stock_quantity = stock_quantity + $1::int
+WHERE id = $2
+`
+
+type IncreaseStockParams struct {
+	Stock     int32 `json:"stock"`
+	VariantID int32 `json:"variant_id"`
+}
+
+func (q *Queries) IncreaseStock(ctx context.Context, arg IncreaseStockParams) error {
+	_, err := q.db.Exec(ctx, increaseStock, arg.Stock, arg.VariantID)
+	return err
+}
+
+const updatePendingOrderStatus = `-- name: UpdatePendingOrderStatus :one
+UPDATE pending_orders
+SET status = $1::text
+WHERE id = $2::int AND status = 'pending'
+    RETURNING id, status
+`
+
+type UpdatePendingOrderStatusParams struct {
+	Status string `json:"status"`
+	ID     int32  `json:"id"`
+}
+
+type UpdatePendingOrderStatusRow struct {
+	ID     int32  `json:"id"`
+	Status string `json:"status"`
+}
+
+func (q *Queries) UpdatePendingOrderStatus(ctx context.Context, arg UpdatePendingOrderStatusParams) (UpdatePendingOrderStatusRow, error) {
+	row := q.db.QueryRow(ctx, updatePendingOrderStatus, arg.Status, arg.ID)
+	var i UpdatePendingOrderStatusRow
+	err := row.Scan(&i.ID, &i.Status)
 	return i, err
 }
 

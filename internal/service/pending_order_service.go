@@ -2,9 +2,15 @@ package service
 
 import (
 	"context"
+	"crypto/subtle"
+	"errors"
+	"fmt"
+	"github.com/jackc/pgx/v5"
 	"log"
 	"net/http"
 	"nineshop-be/internal/worker"
+	"nineshop-be/pkg/cache"
+	"sort"
 	"strings"
 	"time"
 
@@ -32,13 +38,14 @@ type pendingOrderService struct {
 	pr          repository.ProductRepository
 	osh         repository.OrderStatusHistoryRepository
 	emailWorker worker.BackgroundWorker
+	redis       cache.RedisCacheService
 }
 
 type UserInject interface {
 	GetByUuid(ctx context.Context, uuid pgtype.UUID) (sqlc.User, error)
 }
 
-func NewPendingOrderService(emailWorker worker.BackgroundWorker, store *db.Store, repo repository.PendingOrderRepository, ui UserInject, pot repository.PendingOrderItemRepository, email email.EmailService, or repository.OrderRepository, oi repository.OrderItemRepository, pr repository.ProductRepository, osh repository.OrderStatusHistoryRepository) PendingOrderService {
+func NewPendingOrderService(emailWorker worker.BackgroundWorker, store *db.Store, repo repository.PendingOrderRepository, ui UserInject, pot repository.PendingOrderItemRepository, email email.EmailService, or repository.OrderRepository, oi repository.OrderItemRepository, pr repository.ProductRepository, osh repository.OrderStatusHistoryRepository, redis cache.RedisCacheService) PendingOrderService {
 	return &pendingOrderService{
 		store:       store,
 		repo:        repo,
@@ -50,6 +57,7 @@ func NewPendingOrderService(emailWorker worker.BackgroundWorker, store *db.Store
 		pr:          pr,
 		osh:         osh,
 		emailWorker: emailWorker,
+		redis:       redis,
 	}
 }
 
@@ -78,7 +86,7 @@ func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrd
 		return dto.CreatePendingOrderResponse{}, err
 	}
 
-	paymentURL, err := ns.handlePostTransactionActions(ctx, txResult, user.Email, c)
+	paymentURL, err := ns.handlePostTransactionActions(ctx, txResult, user.Email)
 	if err != nil {
 		log.Printf("handlePostTransactionActions error : %v", err)
 		return dto.CreatePendingOrderResponse{}, err
@@ -124,12 +132,12 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 	var otp string
 	var otpExpiresAt pgtype.Timestamp
 	var shouldSendOTP bool
-	var vnpayRequested bool
-	var status = constant.OrderStatusPending
+	var vnPayRequested bool
+	now := time.Now().UTC()
+	var expiresAt time.Time
 
 	err := ns.store.ExecTx(c, func(q *sqlc.Queries) error {
 		for _, item := range arg.Items {
-			// Khóa dòng sản phẩm để kiểm tra thông tin và tồn kho
 			variant, errTx := q.GetVariantForUpdate(c, int32(item.VariantID))
 			if errTx != nil {
 				log.Printf("get variant fail: %v", errTx)
@@ -145,7 +153,6 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 				return utils.NewError(http.StatusBadRequest, "Insufficient stock quantity")
 			}
 
-			// Thực hiện trừ kho
 			result, errTx := q.DecreaseStock(c, sqlc.DecreaseStockParams{
 				Stock:     int32(item.Quantity),
 				VariantID: int32(item.VariantID),
@@ -156,18 +163,17 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 			}
 		}
 
-		// Xử lý Payment Method / OTP
+		// Handle Payment Method / OTP
 		if arg.PaymentId == constant.PaymentMethodCod {
 			otp = utils.GenOTP()
-			otpExpiresAt = pgtype.Timestamp{
-				Time:  time.Now().Add(5 * time.Minute),
-				Valid: true,
-			}
+			otpExpiresAt = pgtype.Timestamp{Time: now.Add(5 * time.Minute), Valid: true}
+			expiresAt = now.Add(5 * time.Minute)
 			shouldSendOTP = true
 		} else {
 			otp = ""
 			otpExpiresAt = pgtype.Timestamp{Valid: false}
-			vnpayRequested = arg.PaymentId == constant.PaymentMethodVnPay
+			expiresAt = now.Add(15 * time.Minute)
+			vnPayRequested = arg.PaymentId == constant.PaymentMethodVnPay
 		}
 
 		count := int32(len(arg.Items))
@@ -182,18 +188,17 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 			Address:         arg.Address,
 			Otp:             otp,
 			OtpExpiresAt:    otpExpiresAt,
+			ExpiresAt:       pgtype.Timestamptz{Time: expiresAt, Valid: true},
 			Subtotal:        utils.Float64ToNumeric(arg.Subtotal),
 			TotalAmount:     utils.Float64ToNumeric(arg.Total),
 			Tax:             utils.Float64ToNumeric(arg.Tax),
 			ShippingPrice:   utils.Float64ToNumeric(arg.Shipping),
-			Status:          &status,
 			AmountItem:      &count,
 		})
 		if errTx != nil {
 			log.Printf("ERROR creating pending order: %v", errTx)
 			return utils.WrapError(errTx, "Create Pending order fail", http.StatusBadRequest)
 		}
-
 		for _, item := range arg.Items {
 			_, errTx = q.CreatePendingOrderItem(c, sqlc.CreatePendingOrderItemParams{
 				PendingOrderID: pOrder.ID,
@@ -218,11 +223,11 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 		PendingOrder:   pOrder,
 		OTP:            otp,
 		ShouldSendOTP:  shouldSendOTP,
-		VnPayRequested: vnpayRequested,
+		VnPayRequested: vnPayRequested,
 	}, nil
 }
 
-func (ns *pendingOrderService) handlePostTransactionActions(ctx *gin.Context, txResult orderTxResult, userEmail string, c context.Context) (string, error) {
+func (ns *pendingOrderService) handlePostTransactionActions(ctx *gin.Context, txResult orderTxResult, userEmail string) (string, error) {
 	var paymentURL string
 	var err error
 
@@ -242,32 +247,72 @@ func (ns *pendingOrderService) handlePostTransactionActions(ctx *gin.Context, tx
 
 	if txResult.ShouldSendOTP {
 		ns.emailWorker.EnqueueEmailTask(userEmail, txResult.OTP)
-		log.Printf("Đã đưa task gửi email OTP vào background worker cho user: %s", userEmail)
+		log.Printf("Moved the OTP email-sending task to a background worker for user: %s", userEmail)
 	}
 
 	return paymentURL, nil
 }
 
+const maxOtpAttempts = 5
+
+func (ns *pendingOrderService) releaseAndLog(c context.Context, id int32, status string) {
+	if err := ns.releasePending(c, id, status); err != nil {
+		log.Printf("release pending order %d (%s) fail: %v", id, status, err)
+	}
+}
+
 func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTPParams) (sqlc.Order, error) {
 	c := ctx.Request.Context()
 
+	user, err := ns.extractAndValidateUser(ctx)
+	if err != nil {
+		return sqlc.Order{}, err
+	}
+
+	pOrder, err := ns.repo.GetPOrderById(c, int32(arg.POrderId))
+	if err != nil || pOrder.UserID != user.ID {
+		return sqlc.Order{}, utils.NewError(http.StatusNotFound, "Order not found")
+	}
+	if pOrder.Status != constant.PendingOrderStatusPending {
+		return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "The order is no longer valid")
+	}
+
+	if time.Now().After(pOrder.ExpiresAt.Time) {
+		ns.releaseAndLog(c, pOrder.ID, constant.PendingOrderStatusExpired)
+		return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "The order has expired")
+	}
+
+	if pOrder.OtpAttempts >= maxOtpAttempts {
+		ns.releaseAndLog(c, pOrder.ID, constant.PendingOrderStatusCancelled)
+		return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "You have entered an incorrect OTP more than 5 times. The order has been cancelled.")
+	}
+	if !pOrder.OtpExpiresAt.Valid || time.Now().After(pOrder.OtpExpiresAt.Time) {
+		return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "OTP has expired")
+	}
+
+	if subtle.ConstantTimeCompare([]byte(strings.TrimSpace(arg.Otp)), []byte(pOrder.Otp)) != 1 {
+		attempts, err := ns.store.IncrementOtpAttempts(c, pOrder.ID)
+		if err != nil {
+			return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "The order is no longer valid")
+		}
+		if attempts >= maxOtpAttempts {
+			ns.releaseAndLog(c, pOrder.ID, constant.PendingOrderStatusCancelled)
+			return sqlc.Order{}, utils.NewError(http.StatusBadRequest, "You have entered an incorrect OTP more than 5 times. The order has been cancelled")
+		}
+		return sqlc.Order{}, utils.NewError(http.StatusBadRequest,
+			fmt.Sprintf("The OTP is incorrect. You have %d attempt(s) remaining", maxOtpAttempts-attempts))
+	}
+
 	var order sqlc.Order
-
-	err := ns.store.ExecTx(c, func(q *sqlc.Queries) error {
-		pOrder, errTx := q.GetPOrderById(c, int32(arg.POrderId))
-		if errTx != nil {
-			return utils.WrapError(errTx, "Get pending order fail", http.StatusBadRequest)
+	err = ns.store.ExecTx(c, func(q *sqlc.Queries) error {
+		if _, err := q.ConfirmPendingOrder(c, sqlc.ConfirmPendingOrderParams{ID: pOrder.ID, UserID: user.ID}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return utils.NewError(http.StatusBadRequest, "The order is no longer valid")
+			}
+			return utils.WrapError(err, "Confirm pending order fail", http.StatusInternalServerError)
 		}
 
-		if !pOrder.OtpExpiresAt.Valid || time.Now().After(pOrder.OtpExpiresAt.Time) {
-			return utils.NewError(http.StatusBadRequest, "Otp expired")
-		}
-
-		if strings.TrimSpace(arg.Otp) != strings.TrimSpace(pOrder.Otp) {
-			return utils.NewError(http.StatusBadRequest, "Otp invalid")
-		}
-
-		// 5. Tạo order thật
+		var errTx error
 		order, errTx = q.CreateOrder(c, sqlc.CreateOrderParams{
 			UserID:          pOrder.UserID,
 			Name:            pOrder.Name,
@@ -302,13 +347,11 @@ func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTP
 		if errTx != nil {
 			return utils.WrapError(errTx, "Get pending order items fail", http.StatusInternalServerError)
 		}
-
 		for _, item := range pOrderItems {
 			product, errVariant := q.GetVariantById(c, item.VariantID)
 			if errVariant != nil {
 				return utils.WrapError(errVariant, "Get product from pending order item fail", http.StatusBadRequest)
 			}
-
 			_, errTx = q.AddOrderItem(c, sqlc.AddOrderItemParams{
 				OrderID:          order.ID,
 				VariantID:        item.VariantID,
@@ -321,13 +364,77 @@ func (ns *pendingOrderService) ValidateOTP(ctx *gin.Context, arg dto.ValidateOTP
 				return utils.WrapError(errTx, "Add order item fail", http.StatusInternalServerError)
 			}
 		}
-
 		return nil
 	})
-
 	if err != nil {
 		return sqlc.Order{}, err
 	}
-
 	return order, nil
+}
+
+func (ns *pendingOrderService) releasePending(c context.Context, id int32, newStatus string) error {
+	return ns.store.ExecTx(c, func(q *sqlc.Queries) error {
+		_, err := q.UpdatePendingOrderStatus(c, sqlc.UpdatePendingOrderStatusParams{Status: newStatus, ID: id})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		items, err := q.GetByPOrderItemId(c, id)
+		if err != nil {
+			return err
+		}
+		sort.Slice(items, func(i, j int) bool { return items[i].VariantID < items[j].VariantID })
+		for _, it := range items {
+			if err := q.IncreaseStock(c, sqlc.IncreaseStockParams{Stock: it.Quantity, VariantID: it.VariantID}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (ns *pendingOrderService) ReleaseExpiredPendingOrders(ctx context.Context) (int, error) {
+	ids, err := ns.store.ListExpiredPendingOrderIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	released := 0
+	for _, id := range ids {
+		if err := ns.releasePending(ctx, id, constant.PendingOrderStatusExpired); err != nil {
+			log.Printf("release expired pending order %d fail: %v", id, err)
+			continue
+		}
+		released++
+	}
+	return released, nil
+}
+
+func StartExpiredPendingOrderJob(ctx context.Context, svc PendingOrderService, interval time.Duration) {
+	run := func() {
+		for {
+			n, err := svc.ReleaseExpiredPendingOrders(ctx)
+			if err != nil {
+				log.Printf("expired pending order job error: %v", err)
+				return
+			}
+			if n < 100 {
+				return
+			}
+		}
+	}
+	go func() {
+		run()
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				run()
+			}
+		}
+	}()
 }

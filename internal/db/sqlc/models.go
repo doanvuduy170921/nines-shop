@@ -89,22 +89,24 @@ type PaymentMethod struct {
 }
 
 type PendingOrder struct {
-	ID              int32            `json:"id"`
-	UserID          int32            `json:"user_id"`
-	Name            string           `json:"name"`
-	Email           string           `json:"email"`
-	Phone           string           `json:"phone"`
-	PaymentMethodID int32            `json:"payment_method_id"`
-	Address         string           `json:"address"`
-	Otp             string           `json:"otp"`
-	OtpExpiresAt    pgtype.Timestamp `json:"otp_expires_at"`
-	Subtotal        pgtype.Numeric   `json:"subtotal"`
-	TotalAmount     pgtype.Numeric   `json:"total_amount"`
-	ShippingPrice   pgtype.Numeric   `json:"shipping_price"`
-	Tax             pgtype.Numeric   `json:"tax"`
-	Status          *string          `json:"status"`
-	CreatedAt       pgtype.Timestamp `json:"created_at"`
-	AmountItem      *int32           `json:"amount_item"`
+	ID              int32              `json:"id"`
+	UserID          int32              `json:"user_id"`
+	Name            string             `json:"name"`
+	Email           string             `json:"email"`
+	Phone           string             `json:"phone"`
+	PaymentMethodID int32              `json:"payment_method_id"`
+	Address         string             `json:"address"`
+	Otp             string             `json:"otp"`
+	OtpExpiresAt    pgtype.Timestamp   `json:"otp_expires_at"`
+	Subtotal        pgtype.Numeric     `json:"subtotal"`
+	TotalAmount     pgtype.Numeric     `json:"total_amount"`
+	ShippingPrice   pgtype.Numeric     `json:"shipping_price"`
+	Tax             pgtype.Numeric     `json:"tax"`
+	Status          string             `json:"status"`
+	CreatedAt       pgtype.Timestamp   `json:"created_at"`
+	AmountItem      *int32             `json:"amount_item"`
+	OtpAttempts     int32              `json:"otp_attempts"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 }
 
 type PendingOrderItem struct {

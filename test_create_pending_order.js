@@ -2,13 +2,12 @@ import http from 'k6/http';
 import { check } from 'k6';
 
 export const options = {
-    // Bắn đồng thời 10 "người dùng ảo" cùng một lúc vào endpoint tạo đơn
     vus: 10,
-    iterations: 10, // Tổng cộng gửi đúng 10 request
+    iterations: 10,
 };
 
 export default function () {
-    const url = 'http://localhost:8080/api/v1/pending-order/create'; // Hoặc IP VPS của bạn
+    const url = 'http://localhost:8080/api/v1/pending-order/create';
 
     const payload = JSON.stringify({
         payment_id: 1,
@@ -22,7 +21,7 @@ export default function () {
         tax: 1,
         items: [
             {
-                variant_id: 84, // ID sản phẩm bạn muốn test kho
+                variant_id: 84,
                 quantity: 1,
                 price: 24
             }

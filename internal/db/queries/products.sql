@@ -169,7 +169,7 @@ FROM product_variants pv
          JOIN products p ON pv.product_id = p.id
 WHERE pv.id = $1
     LIMIT 1
-FOR UPDATE;
+FOR UPDATE OF pv;
 
 
 -- name: DecreaseStock :execresult
@@ -225,3 +225,14 @@ FROM (
              MIN(pv.price) >= sqlc.arg(min_price)
             AND MIN(pv.price) <= sqlc.arg(max_price)
      ) AS filtered_product;
+
+-- name: IncreaseStock :exec
+UPDATE product_variants
+SET stock_quantity = stock_quantity + sqlc.arg(stock)::int
+WHERE id = sqlc.arg(variant_id);
+
+-- name: UpdatePendingOrderStatus :one
+UPDATE pending_orders
+SET status = sqlc.arg(status)::text
+WHERE id = sqlc.arg(id)::int AND status = 'pending'
+    RETURNING id, status;

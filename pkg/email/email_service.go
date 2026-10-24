@@ -16,12 +16,10 @@ type GmailService struct {
 	config config.EmailConfig
 }
 
-// NewGmailService khởi tạo email service
 func NewGmailService(config config.EmailConfig) EmailService {
 	return &GmailService{config: config}
 }
 
-// SendOTPEmail gửi mã OTP xác nhận đơn hàng
 func (s *GmailService) SendOTPEmail(to, otp string) error {
 	subject := "Mã xác nhận đơn hàng của bạn"
 	body, err := s.renderTemplate("otp", map[string]interface{}{
@@ -35,14 +33,13 @@ func (s *GmailService) SendOTPEmail(to, otp string) error {
 	return s.send(to, subject, body)
 }
 
-// send - hàm private thực hiện gửi email
+// send - a private function that handles sending emails
 func (s *GmailService) send(to, subject, body string) error {
 	auth := smtp.PlainAuth("", s.config.SMTPUser, s.config.SMTPPassword, s.config.SMTPHost)
 	message := s.buildMessage(to, subject, body)
 
 	addr := fmt.Sprintf("%s:%s", s.config.SMTPHost, s.config.SMTPPort)
 
-	// Kết nối bình thường trước (plain TCP)
 	netConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("smtp connection timeout: %w", err)
@@ -54,7 +51,6 @@ func (s *GmailService) send(to, subject, body string) error {
 	}
 	defer client.Close()
 
-	// Nếu server hỗ trợ STARTTLS -> nâng cấp kết nối lên TLS
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		tlsConfig := &tls.Config{ServerName: s.config.SMTPHost}
 		if err = client.StartTLS(tlsConfig); err != nil {
@@ -62,12 +58,10 @@ func (s *GmailService) send(to, subject, body string) error {
 		}
 	}
 
-	// Xác thực
 	if err := client.Auth(auth); err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	// Gửi mail
 	if err := client.Mail(s.config.SMTPUser); err != nil {
 		return fmt.Errorf("failed to set sender: %w", err)
 	}
@@ -91,7 +85,7 @@ func (s *GmailService) send(to, subject, body string) error {
 	return nil
 }
 
-// buildMessage xây dựng email message với headers
+// buildMessage constructs an email message with headers
 func (s *GmailService) buildMessage(to, subject, body string) string {
 	from := fmt.Sprintf("%s <%s>", s.config.FromName, s.config.SMTPUser)
 
@@ -112,7 +106,6 @@ func (s *GmailService) buildMessage(to, subject, body string) string {
 	return message
 }
 
-// renderTemplate render HTML template cho email
 func (s *GmailService) renderTemplate(templateName string, data map[string]interface{}) (string, error) {
 	templates := getEmailTemplates()
 

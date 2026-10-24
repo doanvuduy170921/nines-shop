@@ -58,6 +58,7 @@ type CartService interface {
 type PendingOrderService interface {
 	Create(ctx *gin.Context, arg dto.CreatePendingOrderDto) (dto.CreatePendingOrderResponse, error)
 	ValidateOTP(ctx *gin.Context, arg dto.ValidateOTPParams) (sqlc.Order, error)
+	ReleaseExpiredPendingOrders(ctx context.Context) (int, error)
 }
 
 type PaymentService interface {

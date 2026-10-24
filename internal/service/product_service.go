@@ -41,7 +41,6 @@ type ProductPaginationResponse struct {
 }
 
 func (ps *productService) GetAllProductByFilter(ctx context.Context, search string, categoryID, brandID *int64, minPrice, maxPrice *float64, page, limit int) (ProductPaginationResponse, error) {
-	// 1. Lấy dữ liệu từ Repo như bình thường
 	var searchArg *string
 	if search != "" {
 		searchArg = &search
@@ -65,8 +64,6 @@ func (ps *productService) GetAllProductByFilter(ctx context.Context, search stri
 	if err != nil {
 		return ProductPaginationResponse{}, utils.HandleDbError(err)
 	}
-
-	// 2. Tính toán phân trang trên mảng kết quả
 	total := int64(len(products))
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 	if totalPage == 0 {
@@ -86,8 +83,6 @@ func (ps *productService) GetAllProductByFilter(ctx context.Context, search stri
 	if total > 0 && start < int(total) {
 		paginatedData = products[start:end]
 	}
-
-	// 3. Trả về đúng object có chứa trường Data, Total, TotalPage, Page
 	return ProductPaginationResponse{
 		Data:      paginatedData,
 		Total:     total,
