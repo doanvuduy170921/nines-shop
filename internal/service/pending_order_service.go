@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"nineshop-be/internal/worker"
 	"nineshop-be/pkg/cache"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -91,10 +92,25 @@ func (ns *pendingOrderService) Create(ctx *gin.Context, arg dto.CreatePendingOrd
 		log.Printf("handlePostTransactionActions error : %v", err)
 		return dto.CreatePendingOrderResponse{}, err
 	}
+	po := txResult.PendingOrder
 
 	return dto.CreatePendingOrderResponse{
-		PendingOrder: txResult.PendingOrder,
-		VnPayURL:     paymentURL,
+		ID:              po.ID,
+		UserID:          user.ID,
+		Name:            po.Name,
+		Email:           po.Email,
+		Phone:           po.Phone,
+		PaymentMethodID: po.PaymentMethodID,
+		ShippingPrice:   po.ShippingPrice,
+		Subtotal:        po.Subtotal,
+		TotalAmount:     po.TotalAmount,
+		CreatedAt:       po.CreatedAt,
+		Status:          po.Status,
+		Tax:             po.Tax,
+		AmountItem:      po.AmountItem,
+		Address:         po.Address,
+		VnPayURL:        paymentURL,
+		ExpiresAt:       po.ExpiresAt,
 	}, nil
 }
 
@@ -137,7 +153,9 @@ func (ns *pendingOrderService) executeOrderTransaction(c context.Context, user s
 	var expiresAt time.Time
 
 	err := ns.store.ExecTx(c, func(q *sqlc.Queries) error {
-		for _, item := range arg.Items {
+		items := slices.Clone(arg.Items)
+		sort.Slice(items, func(i, j int) bool { return items[i].VariantID < items[j].VariantID }) // sort variant for fix deadlock
+		for _, item := range items {
 			variant, errTx := q.GetVariantForUpdate(c, int32(item.VariantID))
 			if errTx != nil {
 				log.Printf("get variant fail: %v", errTx)
