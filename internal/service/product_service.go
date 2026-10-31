@@ -134,7 +134,6 @@ func (ps *productService) AddProduct(ctx context.Context, input dto.AddProductRe
 		}
 	}
 
-	// add spec product
 	for _, spec := range input.Specifications {
 		_, err = qTx.AddProductSpec(ctx, sqlc.AddProductSpecParams{
 			ProductID:    product.ID,
