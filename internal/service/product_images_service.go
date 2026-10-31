@@ -80,7 +80,7 @@ func (ps *productImagesService) SaveUploadFile(ctx *gin.Context, id int64) (*dto
 		result.SuccessCount++
 	}
 
-	thumbnailProduct := result.SavedImages[0].ImageUrl // lấy ảnh đầu tiên của product set cho thumbnail
+	thumbnailProduct := result.SavedImages[0].ImageUrl
 	_, err = ps.pu.UpdateThumbnail(ctx, thumbnailProduct, int32(id))
 	if err != nil {
 		log.Println("Error updating thumbnail: " + err.Error())

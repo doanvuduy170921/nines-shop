@@ -6,9 +6,10 @@ import (
 )
 
 type AppError struct {
-	Code    ErrorCode `json:"code"`
-	Message string    `json:"message"`
-	Err     error     `json:"error"`
+	Code    ErrorCode         `json:"code"`
+	Message string            `json:"message"`
+	Err     error             `json:"error"`
+	Errors  map[string]string `json:"errors,omitempty"`
 }
 
 type ErrorCode int
@@ -55,11 +56,15 @@ func WrapError(err error, message string, code ErrorCode) *AppError {
 }
 
 func ResponseError(c *gin.Context, err error) {
-	if err, ok := err.(*AppError); ok {
-		c.JSON(ErrCodeToInt(err.Code), gin.H{
-			"code":    err.Code,
-			"message": err.Message,
-		})
+	if appErr, ok := err.(*AppError); ok {
+		response := gin.H{
+			"code":    appErr.Code,
+			"message": appErr.Message,
+		}
+		if len(appErr.Errors) > 0 {
+			response["errors"] = appErr.Errors
+		}
+		c.JSON(ErrCodeToInt(appErr.Code), response)
 		return
 	}
 	c.JSON(http.StatusInternalServerError, gin.H{

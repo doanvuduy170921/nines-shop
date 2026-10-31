@@ -15,24 +15,31 @@ func HandlerValidationError(err error) gin.H {
 		for _, e := range validateErr {
 			switch e.Tag() {
 			case "required":
-				errors[e.Field()] = fmt.Sprintf("%s là bắt buộc", e.Field())
+				errors[e.Field()] = fmt.Sprintf("%s is required", e.Field())
 			case "email":
-				errors[e.Field()] = fmt.Sprintf("%s phải đúng định dạng email", e.Field())
+				errors[e.Field()] = fmt.Sprintf("%s must be a valid email address", e.Field())
 			case "min":
-				errors[e.Field()] = fmt.Sprintf("%s phải có ít nhất %s ký tự", e.Field(), e.Param())
+				errors[e.Field()] = fmt.Sprintf("%s must be at least %s characters", e.Field(), e.Param())
 			case "max":
-				errors[e.Field()] = fmt.Sprintf("%s không được vượt quá %s ký tự", e.Field(), e.Param())
+				errors[e.Field()] = fmt.Sprintf("%s must not exceed %s characters", e.Field(), e.Param())
 			case "strong_pass":
-				errors[e.Field()] = fmt.Sprintf("%s phải có độ dài 8-20 ký tự, chứa chữ thường, chữ hoa, số và ký tự đặc biệt", e.Field())
+				errors[e.Field()] = fmt.Sprintf("%s must be 8-20 characters long and include lowercase, uppercase, numbers, and special characters", e.Field())
 			case "strong_user":
-				errors[e.Field()] = fmt.Sprintf("%s chỉ được chứa chữ thường, số", e.Field())
+				errors[e.Field()] = fmt.Sprintf("%s can only contain lowercase letters and numbers", e.Field())
 			default:
-				errors[e.Field()] = fmt.Sprintf("%s không hợp lệ", e.Field())
+				errors[e.Field()] = fmt.Sprintf("%s is invalid", e.Field())
 			}
 		}
-		return gin.H{"errors": errors}
+		return gin.H{
+			"code":    400,
+			"message": "Invalid input data",
+			"errors":  errors,
+		}
 	}
-	return gin.H{"error": "Yêu cầu không hợp lệ!"}
+	return gin.H{
+		"code":    400,
+		"message": "Invalid request!",
+	}
 }
 
 func ConvertAndValidateIntParam(ctx *gin.Context, param string, prefix int32) int32 {
