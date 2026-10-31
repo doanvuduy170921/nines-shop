@@ -1,4 +1,3 @@
-<img width="4427" height="6950" alt="Go Order Processing Architecture-2026-10-31-134835" src="https://github.com/user-attachments/assets/4ff5bd86-00dd-459a-85df-eeec3b3e44be" />
 # 🛒 Nine-Shop Backend — High-Performance E-commerce Platform
 
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org/)
@@ -47,8 +46,7 @@ A production-ready e-commerce backend built with **Go** using a **Modular Monoli
 ---
 
 ## 📐 Architecture Diagram
-
-<img width="722" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/f57efd0b-4dce-43e1-a8b9-213badacfb36" />
+<img width="4427" height="6950" alt="Go Order Processing Architecture-2026-10-31-134835" src="https://github.com/user-attachments/assets/4ff5bd86-00dd-459a-85df-eeec3b3e44be" />
 
 ---
 
