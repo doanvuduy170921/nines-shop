@@ -46,8 +46,7 @@ A production-ready e-commerce backend built with **Go** using a **Modular Monoli
 ---
 
 ## 📐 Architecture Diagram
-
-<img width="722" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/f57efd0b-4dce-43e1-a8b9-213badacfb36" />
+<img width="4427" height="6950" alt="Go Order Processing Architecture-2026-10-31-134835" src="https://github.com/user-attachments/assets/4ff5bd86-00dd-459a-85df-eeec3b3e44be" />
 
 ---
 
@@ -60,3 +59,22 @@ A production-ready e-commerce backend built with **Go** using a **Modular Monoli
 ```bash
 git clone [https://github.com/doanvuduy170921/nineshop-be.git](https://github.com/doanvuduy170921/nineshop-be.git)
 cd nineshop-be
+```
+2. Environment Configuration
+Copy the sample environment file:
+```bash
+cp .env.example .env
+```
+3. Spin up the Infrastructure & App
+Run the entire stack (Go Backend, PostgreSQL, Redis, RabbitMQ) via Docker Compose:
+```bash
+docker-compose up -d --build
+```
+📬 Contact & Maintainer
+Author: Đoàn Vũ Duy
+
+Email: doanvuduyndh@gmail.com
+
+LinkedIn: duydoanvu
+
+GitHub: doanvuduy170921
