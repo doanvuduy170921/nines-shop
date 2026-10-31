@@ -1,3 +1,4 @@
+<img width="4427" height="6950" alt="Go Order Processing Architecture-2026-10-31-134835" src="https://github.com/user-attachments/assets/4ff5bd86-00dd-459a-85df-eeec3b3e44be" />
 # 🛒 Nine-Shop Backend — High-Performance E-commerce Platform
 
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org/)
