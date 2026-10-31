@@ -75,6 +75,6 @@ Author: Đoàn Vũ Duy
 
 Email: doanvuduyndh@gmail.com
 
-LinkedIn: duydoanvu17092001
+LinkedIn: duydoanvu
 
 GitHub: doanvuduy170921
