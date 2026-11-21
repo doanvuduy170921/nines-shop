@@ -1,0 +1,269 @@
+basePath: /api/v1
+definitions:
+  dto.CreateUserParams:
+    properties:
+      address:
+        maxLength: 255
+        type: string
+      email:
+        type: string
+      name:
+        maxLength: 50
+        minLength: 3
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  dto.CreateUserRes:
+    properties:
+      email:
+        type: string
+      expired_at:
+        type: string
+    required:
+    - email
+    - expired_at
+    type: object
+  dto.LoginParams:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      role:
+        type: string
+      ttl:
+        type: integer
+    required:
+    - access_token
+    - refresh_token
+    - role
+    - ttl
+    type: object
+  dto.OTPCreateUserParam:
+    properties:
+      email:
+        type: string
+      otp:
+        type: string
+    required:
+    - email
+    - otp
+    type: object
+  dto.RefreshTokenParams:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  dto.RefreshTokenResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      ttl:
+        type: integer
+    type: object
+  utils.AppError:
+    properties:
+      code:
+        type: integer
+      error: {}
+      errors:
+        additionalProperties:
+          type: string
+        type: object
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@nineshop.com
+    name: API Support
+  description: High-performance e-commerce backend built in Golang with Gin, PostgresSQL,
+    and Redis.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Nine shop API Documentation
+  version: "1.0"
+paths:
+  /auth/activate:
+    post:
+      consumes:
+      - application/json
+      description: Verify the OTP sent to the user's email to activate the account
+      parameters:
+      - description: Email and OTP code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.OTPCreateUserParam'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content - Account activated successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid OTP or validation error
+          schema:
+            $ref: '#/definitions/utils.AppError'
+      summary: Activate user account via OTP
+      tags:
+      - Auth
+  /auth/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account and trigger an OTP verification email
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserParams'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully, pending OTP activation
+          schema:
+            $ref: '#/definitions/dto.CreateUserRes'
+        "400":
+          description: Validation error or invalid input
+          schema:
+            $ref: '#/definitions/utils.AppError'
+        "409":
+          description: Email already exists
+          schema:
+            $ref: '#/definitions/utils.AppError'
+      summary: Register a new user
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password to receive access and
+        refresh tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/dto.LoginResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/utils.AppError'
+        "401":
+          description: Unauthorized - Invalid credentials
+          schema:
+            $ref: '#/definitions/utils.AppError'
+      summary: User login
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke the active refresh token to log the user out
+      parameters:
+      - description: Refresh Token to revoke
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenParams'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/utils.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.AppError'
+      security:
+      - BearerAuth: []
+      summary: User logout
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new access token using a valid refresh token
+      parameters:
+      - description: Refresh Token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refreshed successfully
+          schema:
+            $ref: '#/definitions/dto.RefreshTokenResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/utils.AppError'
+        "401":
+          description: Unauthorized - Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/utils.AppError'
+      summary: Refresh access token
+      tags:
+      - Auth
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

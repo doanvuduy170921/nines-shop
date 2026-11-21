@@ -12,6 +12,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/redis/go-redis/v9"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"log"
 	"net/http"
 	"nineshop-be/internal/config"
@@ -44,6 +46,7 @@ func NewApplication(ctx context.Context, cfg *config.Config, dbQueries *sqlc.Que
 	r := gin.Default()
 	r.Static("/uploads", "./uploads")
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	redisClient := config.NewRedisConfig()
 	redisCacheService := cache.NewRedisCacheService(redisClient)
 
@@ -77,6 +80,7 @@ func NewApplication(ctx context.Context, cfg *config.Config, dbQueries *sqlc.Que
 	})
 
 	routes.RegisterRoute(redisCacheService, r, getRoutes(module)...)
+
 	return &Application{
 		config: cfg,
 		router: r,
@@ -94,7 +98,6 @@ func (a *Application) Run(ctx context.Context) error {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
-
 	errChan := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

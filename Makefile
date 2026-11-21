@@ -22,4 +22,9 @@ migrate-down:
 migrate-force:
 	migrate -path $(DIR) -database $(CONN_STRING) force $(VERSION)
 
-.PHONY: migrate-create migrate-up migrate-down migrate-force server sqlc
+swagger:
+	swag init -g cmd/api/main.go
+
+dev-run: swagger server
+
+.PHONY: migrate-create migrate-up migrate-down migrate-force server sqlc swagger dev-run

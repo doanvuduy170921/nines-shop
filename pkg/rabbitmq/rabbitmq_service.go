@@ -1,9 +1,12 @@
 package rabbitmq
 
 import (
+	"bytes"
 	"context"
 	"github.com/rabbitmq/amqp091-go"
 	"log"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -15,7 +18,7 @@ func NewRabbitMQ() RabbitMQService {
 }
 
 func (service *rabbitMQService) Send() {
-	conn, err := amqp091.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp091.Dial("amqp://nineshop_admin:nineshop_secure_pass@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -36,22 +39,31 @@ func (service *rabbitMQService) Send() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	body := "Hello World!"
+	body := bodyFrom(os.Args)
 	err = ch.PublishWithContext(ctx,
 		"",     // exchange
 		q.Name, // routing key
 		false,  // mandatory
-		false,  // immediate
+		false,
 		amqp091.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(body),
+			DeliveryMode: amqp091.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(body),
 		})
 	failOnError(err, "Failed to publish a message")
-	log.Printf(" [x] Sent %s\n", body)
+	log.Printf(" [x] Sent %s", body)
 }
-
+func bodyFrom(args []string) string {
+	var s string
+	if (len(args) < 2) || os.Args[1] == "" {
+		s = "hello"
+	} else {
+		s = strings.Join(args[1:], " ")
+	}
+	return s
+}
 func (service *rabbitMQService) Receive() {
-	conn, err := amqp091.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp091.Dial("amqp://nineshop_admin:nineshop_secure_pass@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -85,6 +97,10 @@ func (service *rabbitMQService) Receive() {
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
+			dotCount := bytes.Count(d.Body, []byte("."))
+			t := time.Duration(dotCount)
+			time.Sleep(t * time.Second)
+			log.Printf("Done")
 		}
 	}()
 

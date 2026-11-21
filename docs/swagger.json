@@ -1,0 +1,403 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "High-performance e-commerce backend built in Golang with Gin, PostgresSQL, and Redis.",
+        "title": "Nine shop API Documentation",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "email": "support@nineshop.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/auth/activate": {
+            "post": {
+                "description": "Verify the OTP sent to the user's email to activate the account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Activate user account via OTP",
+                "parameters": [
+                    {
+                        "description": "Email and OTP code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.OTPCreateUserParam"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content - Account activated successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid OTP or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/create": {
+            "post": {
+                "description": "Create a new user account and trigger an OTP verification email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register a new user",
+                "parameters": [
+                    {
+                        "description": "User registration details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateUserParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "User created successfully, pending OTP activation",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateUserRes"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already exists",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "Authenticate user with email and password to receive access and refresh tokens",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revoke the active refresh token to log the user out",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User logout",
+                "parameters": [
+                    {
+                        "description": "Refresh Token to revoke",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshTokenParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Generate a new access token using a valid refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh Token payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshTokenParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token refreshed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or expired refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/utils.AppError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.CreateUserParams": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CreateUserRes": {
+            "type": "object",
+            "required": [
+                "email",
+                "expired_at"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "expired_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LoginParams": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LoginResponse": {
+            "type": "object",
+            "required": [
+                "access_token",
+                "refresh_token",
+                "role",
+                "ttl"
+            ],
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OTPCreateUserParam": {
+            "type": "object",
+            "required": [
+                "email",
+                "otp"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otp": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RefreshTokenParams": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RefreshTokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "integer"
+                }
+            }
+        },
+        "utils.AppError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "error": {},
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}
